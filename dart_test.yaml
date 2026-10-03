@@ -1,0 +1,3 @@
+tags:
+  # Ekran görüntüsü üreten testler; CI'da çalıştırılmaz.
+  render:
