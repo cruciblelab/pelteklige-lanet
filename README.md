@@ -23,25 +23,25 @@ yutma gibi **artikülasyon** sorunları için Türkçe bir Android alıştırma 
 
 ## “Telefon konuşmayı nasıl değerlendiriyor?” — dürüst cevap
 
-Uygulama bugün üç farklı yöntem kullanıyor, her birinin sınırı farklı:
-
-1. **Android’in kendi konuşma tanıyıcısı** (`speech_to_text`). Ayarlarda
-   “mümkünse telefonda” açıkken telefonun çevrimdışı tanıyıcısı tercih edilir.
-   *Garanti değil:* telefonda cihaz içi tanıyıcı yoksa Android normal
-   tanıyıcıya geçer ve ses Google sunucularına gidebilir. Kayıtlar ve
-   tıslama ölçer ise tamamen telefonda kalır. **Sınırı:** Bu tanıyıcılar *kelime* bulmak için eğitilmiştir;
-   hafif bozuk söyleyişi çoğu zaman doğru kelimeye “düzeltir”. Bu yüzden:
-   - Atlanan / yutulan kelimeleri yakalamada **iyi**,
-   - Minimal çiftlerde (iki tarafı da gerçek kelime) **makul**,
-   - Tek bir sesin ne kadar düzgün çıktığını ölçmede **zayıf**.
-2. **Tıslama ölçer** (kendi kodumuz, `lib/audio/sibilant_analyzer.dart`).
-   S ↔ Ş ayrımını ve yanal S’yi iyi gösterir; dişler arası S’yi her zaman
-   ayıramaz. Mikrofon ve uzaklık değerleri kaydırır.
-3. **Kendi kulağın.** Kaydet → dinle → değerlendir döngüsü, terapide de
-   kullanılan öz-izleme yöntemidir ve şu an en güvenilir ölçüttür.
-
-Ses düzeyinde gerçek değerlendirme için telefonda çalışan kendi fonem
-modelimizin planı: [docs/YOL_HARITASI.md](docs/YOL_HARITASI.md).
+1. **Ses analizi: telefonda çalışan fonem modeli (ana yöntem).**
+   [ZIPA](https://github.com/lingjzhu/zipa) çok dilli ses birimi tanıma modeli
+   (70 MB, int8 ONNX, CC BY 4.0) APK'nın içinde geliyor; internet gerekmez,
+   ses telefondan çıkmaz. Kelimeyi değil **sesleri** tanır ve duyduğunu
+   düzeltmez. Kelimenin doğru hâli ile bilinen hatalı hâlleri (radyo / yadyo /
+   ladyo / adyo / gırtlaktan R) yarıştırılır.
+   - Gerçek insan sesinde (FLEURS) doğru söyleyişe “yanlış” deme oranı:
+     R %1,1, L %0,8, K %1,1, S ve Ş %0.
+   - Sentetik “R yerine Y” söyleyişlerinin hiçbirine “doğru” demedi: ya hatayı
+     adlandırdı ya da “net değil” dedi.
+   - **Çocuk sesinde ve gerçek konuşma bozukluğunda henüz ölçülmedi.**
+     Ayrıntılar: [docs/MODEL_DEGERLENDIRME.md](docs/MODEL_DEGERLENDIRME.md).
+2. **Android’in konuşma tanıyıcısı:** yalnızca kitap okumada ve cümlelerde
+   **atlanan kelimeleri** bulmak için. Yanlış sesi doğru kelimeye
+   düzelttiği için telaffuz değerlendirmesinde kullanılmıyor. Dinleme
+   boyunca ses hiç yükselmediyse sonucu yok sayılır.
+3. **Tıslama ölçer** (`lib/audio/sibilant_analyzer.dart`): S ↔ Ş ayrımını
+   canlı gösterir.
+4. **Kendi kulağın:** analiz edilen her söyleyiş kaydedilir, dinleyebilirsin.
 
 ## APK nasıl alınır?
 
@@ -49,7 +49,9 @@ Her push’ta GitHub Actions (`.github/workflows/android.yml`) analiz + test
 çalıştırır ve release APK üretir.
 
 - **Son derleme:** GitHub → *Actions* → *Android APK* → son çalıştırma →
-  *Artifacts* → `apk` (zip olarak iner, içinden `.apk` çıkar).
+  *Artifacts* → `apk-arm64` (zip olarak iner, içinden `.apk` çıkar).
+  Çok eski 32 bit telefonlar için `apk-armv7`. Boyut ~90 MB; bunun 70 MB'ı
+  ses modeli.
 - **Sürüm yayınlamak:** `git tag v0.1.0 && git push origin v0.1.0` → APK
   *Releases* sayfasına eklenir.
 - Telefona kurarken “bilinmeyen kaynaklardan yükleme” izni istenir.
@@ -81,10 +83,13 @@ güncelleme alamaz.
 ## Geliştirme
 
 ```bash
+./tool/fetch_model.sh                  # ses modelini indir (70 MB, SHA-256 doğrulamalı)
 flutter pub get
 flutter analyze
 flutter test --exclude-tags render     # birim + widget testleri
 flutter test --update-goldens --tags render test/render   # ekran görüntüleri
+# uçtan uca model testi (Linux masaüstü; linux/ klasörü git'e girmez)
+flutter create --platforms linux . && xvfb-run flutter test integration_test -d linux
 flutter run                            # bağlı telefonda
 flutter build apk --release
 ```
@@ -94,6 +99,10 @@ Flutter 3.47.6 (stable), Android minSdk Flutter varsayılanı.
 ```
 lib/
   audio/sibilant_analyzer.dart   FFT ile S/Ş spektrum analizi
+  audio/fbank.dart               Kaldi uyumlu log-mel özellikleri (modelin girdisi)
+  audio/phoneme_model.dart       ONNX fonem modeli (flutter_onnxruntime)
+  audio/pronunciation_scorer.dart  doğru / hatalı söyleyiş hipotezlerini yarıştırma
+  audio/voice_capture.dart       16 kHz ses yakalama, sessizlik algılama
   utils/text_align.dart          hedef metin ↔ duyulan metin hizalama (yutma, harf farkı)
   utils/turkish.dart             Türkçe küçük harf / normalizasyon (I/ı, İ/i)
   data/                          sesler, minimal çiftler, hikâyeler (içerik burada)
@@ -104,3 +113,12 @@ lib/
 
 İçerik eklemek kod bilgisi gerektirmez: yeni kelime, cümle ya da hikâye için
 `lib/data/` altındaki listelere ekleme yapman yeterli.
+
+## Atıflar
+
+- Ses modeli: **ZIPA** — Jian Zhu ve ark., *ZIPA: A family of efficient
+  models for multilingual phone recognition*, ACL 2025.
+  [github.com/lingjzhu/zipa](https://github.com/lingjzhu/zipa) ·
+  ağırlıklar [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- Model çalıştırma: [ONNX Runtime](https://onnxruntime.ai) (MIT),
+  [flutter_onnxruntime](https://pub.dev/packages/flutter_onnxruntime).

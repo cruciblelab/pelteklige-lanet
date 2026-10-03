@@ -1,14 +1,16 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../audio/phoneme_model.dart';
+import '../audio/pronunciation_scorer.dart';
 import '../data/minimal_pairs.dart';
 import '../data/sounds.dart';
 import '../models/sound.dart';
 import '../services/settings.dart';
 import '../services/tts.dart';
-import '../utils/turkish.dart';
-import '../widgets/speech_check.dart';
+import '../widgets/model_listen_button.dart';
 
 /// Minimal çiftler: tek sesle ayrılan kelimeler (kar / kay).
 ///
@@ -74,21 +76,31 @@ class _MinimalPairsScreenState extends State<MinimalPairsScreen> {
         : 'Ben “$_target” dedim. Bir daha dinle.';
   }
 
-  void _onHeard(String heard) {
-    final words = tokenize(heard);
-    final t = normalizeText(_target), o = normalizeText(_other);
-    if (words.contains(t)) {
+  Future<void> _onSpeech(Float32List samples) async {
+    final (probs, fit) = await PhonemeModel.instance.compare(samples, [
+      _target,
+      _other,
+    ]);
+    if (!mounted) return;
+    final pt = probs[_target]!, po = probs[_other]!;
+    String pc(double p) => '%${(p * 100).round()}';
+    if (fit < PronunciationScorer.mismatchFit) {
+      setState(
+        () => _feedback =
+            'İki kelimeye de benzemedi. “$_target” kelimesini net söyleyip tekrar dene.',
+      );
+    } else if (pt >= 0.8) {
       _log(true);
-      _feedback = '“$_target” duydum. Harika!';
-    } else if (words.contains(o)) {
+      _feedback = '“$_target” duydum (${pc(pt)}). Harika!';
+    } else if (po >= 0.8) {
       _log(false);
       _feedback =
-          '“$_other” duydum. Hedef “$_target” idi; animasyona bakıp tekrar dene.';
+          '“$_other” gibi duyuldu (${pc(po)}). Hedef “$_target”; '
+          'sesin animasyonuna bakıp tekrar dene.';
     } else {
       setState(
-        () => _feedback = heard.isEmpty
-            ? 'Bir şey duyamadım, biraz daha yüksek sesle dene.'
-            : '“$heard” duydum. İkisine de benzemedi, tekrar dene.',
+        () => _feedback =
+            'Arada kaldı: “$_target” ${pc(pt)}, “$_other” ${pc(po)}. Tekrar dene.',
       );
     }
   }
@@ -237,12 +249,19 @@ class _MinimalPairsScreenState extends State<MinimalPairsScreen> {
       textAlign: TextAlign.center,
     ),
     const SizedBox(height: 16),
-    SpeechCheckButton(
+    ModelListenButton(
       key: ValueKey(_target + _other),
       label: 'Söyle',
-      hints: [_pair.a, _pair.b],
-      pauseFor: const Duration(seconds: 2),
-      onResult: _onHeard,
+      onSpeech: _onSpeech,
+      onSilence: () => setState(
+        () => _feedback = 'Ses duymadım, biraz daha yüksek sesle dene.',
+      ),
+    ),
+    const SizedBox(height: 8),
+    Text(
+      'Telefondaki ses modeli dinler; internet gerekmez.',
+      style: theme.textTheme.bodySmall,
+      textAlign: TextAlign.center,
     ),
   ];
 }

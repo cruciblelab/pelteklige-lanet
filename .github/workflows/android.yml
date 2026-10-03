@@ -37,6 +37,15 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Fonem modeli önbelleği
+        uses: actions/cache@v4
+        with:
+          path: assets/models/zipa-small-crctc-500k.int8.onnx
+          key: zipa-small-crctc-500k-${{ hashFiles('tool/fetch_model.sh') }}
+
+      - name: Fonem modelini indir ve doğrula (SHA-256)
+        run: ./tool/fetch_model.sh
+
       - name: Bağımlılıklar
         run: flutter pub get
 
@@ -70,27 +79,43 @@ jobs:
             echo "::warning::İmza anahtarı tanımlı değil, debug anahtarı kullanılıyor. Yeni APK eskisinin üstüne kurulamayabilir."
           fi
 
+      # İşlemci mimarisine göre ayrı APK: ONNX Runtime her mimari için ayrı
+      # kütüphane getirdiğinden tek (universal) APK ~165 MB olur.
       - name: APK derle
-        run: flutter build apk --release --build-number ${{ github.run_number }}
+        run: flutter build apk --release --split-per-abi --build-number ${{ github.run_number }}
 
-      - name: APK'yı adlandır
+      - name: APK'ları adlandır
         id: name
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
-          FILE="peltekligelanet-${VERSION}-${{ github.run_number }}.apk"
-          cp build/app/outputs/flutter-apk/app-release.apk "$FILE"
-          echo "file=$FILE" >> "$GITHUB_OUTPUT"
-          echo "### APK hazır: \`$FILE\` ($(du -h "$FILE" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+          BASE="peltekligelanet-${VERSION}-${{ github.run_number }}"
+          OUT=build/app/outputs/flutter-apk
+          cp "$OUT/app-arm64-v8a-release.apk" "$BASE-arm64.apk"
+          cp "$OUT/app-armeabi-v7a-release.apk" "$BASE-armv7.apk"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          {
+            echo "### APK hazır"
+            echo "- \`$BASE-arm64.apk\` ($(du -h "$BASE-arm64.apk" | cut -f1)) — 2017 sonrası telefonların neredeyse hepsi"
+            echo "- \`$BASE-armv7.apk\` ($(du -h "$BASE-armv7.apk" | cut -f1)) — eski 32 bit telefonlar"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: apk
-          path: ${{ steps.name.outputs.file }}
+          name: apk-arm64
+          path: ${{ steps.name.outputs.base }}-arm64.apk
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-armv7
+          path: ${{ steps.name.outputs.base }}-armv7.apk
           retention-days: 30
 
       - name: GitHub Release (yalnızca v* etiketlerinde)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.name.outputs.file }}
+          files: |
+            ${{ steps.name.outputs.base }}-arm64.apk
+            ${{ steps.name.outputs.base }}-armv7.apk
           generate_release_notes: true

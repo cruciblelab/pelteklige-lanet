@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../audio/pronunciation_scorer.dart';
 import '../models/sound.dart';
 import '../services/settings.dart';
 import '../services/tts.dart';
 import '../utils/text_align.dart';
+import '../widgets/pronunciation_panel.dart';
 import '../widgets/record_panel.dart';
 import '../widgets/speech_check.dart';
 import '../widgets/word_feedback.dart';
@@ -124,7 +126,20 @@ class _PracticeScreenState extends State<PracticeScreen> {
                             textAlign: TextAlign.center,
                           ),
                         ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 20),
+                      if (PronunciationScorer.supports(widget.sound.letter))
+                        PronunciationPanel(
+                          key: ValueKey(text),
+                          text: text,
+                          targetLetter: widget.sound.letter,
+                          soundId: widget.sound.id,
+                        ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Ya da kendin kaydet ve dinle:',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
                       RecordPanel(
                         label: '${widget.sound.letter}: $text',
                         category: 'alistirma',
@@ -154,28 +169,39 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      if (isSentence || text.length > 3) ...[
-                        SpeechCheckButton(
-                          onResult: (heard) => setState(
-                            () => _checks[i] = (heard, alignTexts(text, heard)),
+                      if (isSentence)
+                        ExpansionTile(
+                          tilePadding: EdgeInsets.zero,
+                          title: const Text('Kelime atlama kontrolü'),
+                          subtitle: const Text(
+                            'Telefonun genel tanıyıcısı (kelime düzeyinde)',
                           ),
-                        ),
-                        if (check != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: WordFeedback(
-                              result: check.$2,
-                              heard: check.$1,
+                          children: [
+                            SpeechCheckButton(
+                              onResult: (heard) => setState(
+                                () => _checks[i] = (
+                                  heard,
+                                  alignTexts(text, heard),
+                                ),
+                              ),
                             ),
-                          ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Not: Telefonun tanıyıcısı küçük telaffuz hatalarını çoğu zaman '
-                          'düzeltip doğru kelimeyi yazar. Yeşil görmek “kusursuz” demek değildir; '
-                          'en güvenilir ölçüt kendi kaydını dinlemendir.',
-                          style: theme.textTheme.bodySmall,
+                            if (check != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: WordFeedback(
+                                  result: check.$2,
+                                  heard: check.$1,
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Bu tanıyıcı yanlış söylenen sesi çoğu zaman doğru kelimeye '
+                              'düzeltir; yalnızca atlanan kelimeleri bulmak için kullan. '
+                              'Ses düzeyindeki değerlendirme için yukarıdaki “Ses analizi”ni kullan.',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
                         ),
-                      ],
                     ],
                   ),
                 );

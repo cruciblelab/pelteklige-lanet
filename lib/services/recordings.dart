@@ -143,6 +143,30 @@ class RecordingStore {
     _pendingPath = null;
   }
 
+  /// Hazır ses baytlarını (ör. telaffuz analizi için alınan WAV) kayıt olarak ekler.
+  Future<RecordingEntry> saveBytes(
+    Uint8List bytes, {
+    required String label,
+    required String category,
+    required int durationMs,
+    String extension = 'wav',
+  }) async {
+    final dir = await _root();
+    final now = DateTime.now();
+    final path = '${dir.path}/${now.millisecondsSinceEpoch}.$extension';
+    await File(path).writeAsBytes(bytes);
+    final entry = RecordingEntry(
+      path: path,
+      label: label,
+      category: category,
+      createdAt: now,
+      durationMs: durationMs,
+    );
+    (await list()).insert(0, entry);
+    await _save();
+    return entry;
+  }
+
   Future<void> delete(RecordingEntry e) async {
     await player.stop();
     await _deleteFile(e.path);

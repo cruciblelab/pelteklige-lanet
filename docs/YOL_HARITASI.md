@@ -28,7 +28,16 @@ okunacak metni bildiğimiz için her ses için bir **doğruluk puanı**
 - FFT tabanlı tıslama ölçer
 - Kayıt / dinleme / öz-değerlendirme
 
-### Aşama 2 — Kendi fonem modelimiz
+### Aşama 2a — Hazır çok dilli fonem modeli (tamamlandı)
+- ZIPA small CR-CTC (70 MB int8) telefonda çalışıyor; doğru/hatalı söyleyiş
+  hipotezleri yarıştırılıyor. Ölçümler: [MODEL_DEGERLENDIRME.md](MODEL_DEGERLENDIRME.md).
+- Gerçek insan sesinde yanlış alarm %0–1,1. Çocuk sesi ve gerçek bozuk
+  konuşma henüz ölçülmedi.
+
+### Aşama 2b — Türkçe için ince ayar ya da kendi modelimiz
+Aşağıdaki plan, ZIPA'nın Türkçe çocuk sesinde yetersiz kaldığı ölçülürse
+gerekir. İlk deneme olarak ZIPA'nın Türkçe veriyle ince ayarı daha ucuzdur.
+
 1. **Veri:** Common Voice Türkçe (açık lisans) + diğer açık Türkçe konuşma
    verileri. Metinler `espeak-ng` ya da kural tabanlı bir Türkçe
    harf→fonem dönüştürücüyle fonem dizisine çevrilir (Türkçe yazım sese çok

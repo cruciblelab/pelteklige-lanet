@@ -79,7 +79,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'Gizlilik: Kayıtlar yalnızca bu telefonda saklanır, hiçbir yere gönderilmez. '
                   'Tıslama ölçer tamamen telefonda çalışır. “Söyle, kontrol edeyim” özelliği '
                   'Android’in konuşma tanıyıcısını kullanır; telefonda çevrimdışı tanıma yoksa '
-                  'bu tanıyıcı sesi Google sunucularına gönderebilir.',
+                  'bu tanıyıcı sesi Google sunucularına gönderebilir. “Ses analizi” ise '
+                  'tamamen telefonda çalışır.\n\n'
+                  'Ses analizi modeli: ZIPA (Jian Zhu ve ark., ACL 2025, '
+                  'github.com/lingjzhu/zipa), lisans CC BY 4.0. '
+                  'Gerçek insan sesinde doğru söyleyişe “yanlış” deme oranı yaklaşık %1; '
+                  'çocuk sesinde henüz ölçülmedi. Sonuçları bir öneri olarak gör.',
                 ),
               ],
             ),

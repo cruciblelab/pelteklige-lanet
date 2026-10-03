@@ -28,6 +28,10 @@ class SpeechCheckButton extends StatefulWidget {
 class _SpeechCheckButtonState extends State<SpeechCheckButton> {
   bool _listening = false;
   double _level = 0;
+
+  /// Dinleme boyunca görülen en yüksek ses düzeyi (dB). Android tanıyıcısı
+  /// sessizlikte bile bazen kelime "duyar"; ses hiç yükselmediyse sonucu yok sayarız.
+  double _maxDb = -100;
   String _partial = '';
 
   @override
@@ -50,6 +54,7 @@ class _SpeechCheckButtonState extends State<SpeechCheckButton> {
       _listening = true;
       _partial = '';
       _level = 0;
+      _maxDb = -100;
     });
     try {
       final heard = await Stt.instance.listen(
@@ -59,12 +64,15 @@ class _SpeechCheckButtonState extends State<SpeechCheckButton> {
           if (mounted) setState(() => _partial = t);
         },
         onLevel: (db) {
+          if (db > _maxDb) _maxDb = db;
           if (mounted) setState(() => _level = (db + 2) / 12);
         },
       );
       if (!mounted) return;
       setState(() => _listening = false);
-      widget.onResult(heard);
+      // Ses düzeyi bilgisi geldiyse ve konuşma seviyesine hiç çıkmadıysa: sessizlik.
+      final silent = _maxDb > -100 && _maxDb < 2;
+      widget.onResult(silent ? '' : heard);
     } on SttException catch (e) {
       if (!mounted) return;
       setState(() => _listening = false);

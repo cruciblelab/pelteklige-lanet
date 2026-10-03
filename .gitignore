@@ -46,3 +46,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Fonem modeli: tool/fetch_model.sh ile indirilir, git'e konmaz
+/assets/models/*.onnx
+/assets/models/*.part
+/linux/
