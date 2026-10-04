@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/settings.dart';
+import 'onboarding_screen.dart';
 import '../services/tts.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -20,6 +21,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: const Text('Ayarlar')),
       body: ListView(
         children: [
+          ListTile(
+            leading: const Icon(Icons.flag_outlined),
+            title: const Text('Planı değiştir / testi yeniden yap'),
+            subtitle: const Text('Kim çalışıyor, hangi sesler zor'),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+            ),
+          ),
+          const Divider(),
           SwitchListTile(
             title: const Text('Konuşma tanımayı mümkünse telefonda yap'),
             subtitle: const Text(
@@ -83,7 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'tamamen telefonda çalışır.\n\n'
                   'Ses analizi modeli: ZIPA (Jian Zhu ve ark., ACL 2025, '
                   'github.com/lingjzhu/zipa), lisans CC BY 4.0. '
-                  'Gerçek insan sesinde doğru söyleyişe “yanlış” deme oranı yaklaşık %1; '
+                  'Gerçek insan sesinde doğru söyleyişe “yanlış” deme oranı %0–1,4; '
                   'çocuk sesinde henüz ölçülmedi. Sonuçları bir öneri olarak gör.',
                 ),
               ],

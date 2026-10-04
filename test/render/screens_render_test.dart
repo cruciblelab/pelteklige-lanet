@@ -16,6 +16,9 @@ import 'package:pelteklige_lanet/screens/minimal_pairs_screen.dart';
 import 'package:pelteklige_lanet/screens/practice_screen.dart';
 import 'package:pelteklige_lanet/screens/reading_screen.dart';
 import 'package:pelteklige_lanet/screens/sound_detail_screen.dart';
+import 'package:pelteklige_lanet/screens/bridge_screen.dart';
+import 'package:pelteklige_lanet/screens/onboarding_screen.dart';
+import 'package:pelteklige_lanet/services/progress.dart';
 import 'package:pelteklige_lanet/services/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -46,8 +49,12 @@ Future<void> _loadFonts() async {
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    SharedPreferences.setMockInitialValues({'seenIntro': true});
+    SharedPreferences.setMockInitialValues({
+      'onboarded': true,
+      'focusSounds': ['R', 'S'],
+    });
     await Settings.instance.load();
+    await Progress.instance.load();
     await _loadFonts();
     // Eklenti kanallarını sustur (testte gerçek cihaz yok).
     final messenger =
@@ -73,9 +80,13 @@ void main() {
     'detail_S': () => SoundDetailScreen(sound: soundById('S')),
     'practice_R': () => PracticeScreen(
       sound: soundById('R'),
-      title: 'Kelime ortasında',
-      items: soundById('R').wordsMiddle,
+      level: levelsFor(soundById('R'))[3],
     ),
+    'bridge_R': () => BridgeScreen(
+      sound: soundById('R'),
+      level: levelsFor(soundById('R')).first,
+    ),
+    'onboarding': () => const OnboardingScreen(),
     'pairs': () => const MinimalPairsScreen(),
     'meter': () => const MeterScreen(),
     'reading': () => ReadingScreen(story: stories.first),

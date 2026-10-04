@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'services/progress.dart';
 import 'services/settings.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Settings.instance.load();
+  await Progress.instance.load();
   runApp(const PeltekApp());
 }
 

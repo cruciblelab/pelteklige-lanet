@@ -82,6 +82,13 @@ class SoundInfo {
   final List<String> sentences;
   final List<String> tongueTwisters;
 
+  /// Ünsüz kümeleri (tren, kral): ses başka bir ünsüzle yan yana.
+  final List<String> wordsClusters;
+
+  /// Köprü alıştırması: (hedef, yardımcı). Ör. R için ("ara", "ada"):
+  /// "ada"yı giderek hızlı söyleyince dil ucu hafif vurur ve "ara" olur.
+  final List<(String, String)> bridge;
+
   /// Tıslama ölçeri ile çalışılabilir mi?
   final bool meterFriendly;
 
@@ -106,6 +113,8 @@ class SoundInfo {
     required this.wordsEnd,
     required this.sentences,
     this.tongueTwisters = const [],
+    this.wordsClusters = const [],
+    this.bridge = const [],
     this.meterFriendly = false,
     this.errorPose,
     this.errorLabel,

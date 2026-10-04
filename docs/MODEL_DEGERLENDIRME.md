@@ -31,6 +31,8 @@ yarıştırılır. Örneğin “radyo” için:
 | Doğru | r-a-d-y-o |
 | R yerine Y | y-a-d-y-o |
 | R yerine L | l-a-d-y-o |
+| R yerine D | d-a-d-y-o |
+| R yerine V/W | v-a-d-y-o |
 | Gırtlaktan R | ʁ-a-d-y-o |
 | R yutuldu | a-d-y-o |
 
@@ -38,9 +40,15 @@ Her biri için CTC olasılığı hesaplanır. Kelimenin geri kalanı hepsinde ay
 olduğundan fark yalnızca hedef sesten gelir.
 
 **Karar kuralı:**
-- Hata: bir hata hipotezi ≥ %90 *ve* doğru < %10
+- Hata: doğru < %3 *ve* en olası hata ≥ %50
 - Doğru: doğru ≥ %30
 - Arada kalırsa: **“net değil, tekrar dene”**
+
+Beş kural gerçek ve sentetik veride karşılaştırıldı. “En olası hata ≥ %90”
+kuralı hipotez sayısı arttıkça (olasılık hatalar arasında bölündüğü için)
+gerçek hataları “net değil”e düşürüyordu. Seçilen kural yanlış alarmı
+artırmadan yakalamayı belirgin şekilde yükseltti (R→Y %55 → %70,
+R→D %82 → %95, L yanlış alarmı %2,3 → %0,8).
 
 Bu kural bilerek temkinli tutuldu: haksız yere “yanlış” demek, bir hatayı
 kaçırmaktan daha zararlı (motivasyonu kırar).
@@ -53,6 +61,11 @@ Ek korumalar:
 
 ## Ölçümler
 
+> **Düzeltme (2026-10-04):** Bu belgenin ilk sürümündeki yanlış alarm
+> oranları (R %1,1, L %0,8) 0,95 eşiğiyle ölçülmüştü; uygulama ise 0,90
+> eşiğini kullanıyordu. Aşağıdaki sayılar uygulamanın şu an kullandığı
+> kuralla (yukarıda) ve R için eklenen D ve V/W hipotezleriyle yeniden ölçüldü.
+
 ### 1) Gerçek insan sesinde yanlış alarm (en önemli sayı)
 
 Google FLEURS Türkçe dev seti, 60 cümle, yetişkin anadil konuşucuları
@@ -61,7 +74,7 @@ değerlendirildi.
 
 | Ses | Örnek | “Doğru” | “Net değil” | **Yanlış alarm** |
 |---|---|---|---|---|
-| R | 277 | %95,7 | %3,2 | **%1,1** |
+| R | 277 | %95,7 | %2,9 | **%1,4** |
 | L | 261 | %92,3 | %6,9 | **%0,8** |
 | K | 177 | %97,7 | %1,1 | **%1,1** |
 | S | 104 | %100 | 0 | **0** |
@@ -70,22 +83,25 @@ değerlendirildi.
 ### 2) Hata yakalama (sentetik)
 
 Gerçek konuşma bozukluğu kaydı elimizde olmadığı için hatalı söyleyişler
-Piper Türkçe TTS ile üretildi (ör. “radyo” yerine “yadyo”). 2 hızda, R için
-22, S için 19, K için 16, L için 14, Ş için 12 kelime.
+Piper Türkçe TTS ile üretildi (ör. “radyo” yerine “yadyo”, “dadyo”,
+“vadyo”). 2 hızda, R için 22, S için 19, K için 16, L için 14, Ş için 12 kelime.
 
 | Gerçek durum | “Hata var” dedi | “Net değil” | Kaçırdı (“doğru” dedi) |
 |---|---|---|---|
-| R yerine Y | %54 | %45 | **%0** |
-| R yerine L | %47 | %45 | %6 |
-| R yutuldu | %20 | %63 | %15 |
-| S yerine Ş | %97 | 0 | %2 |
-| S yerine T | %55 | %23 | %21 |
-| Ş yerine S | %95 | %4 | 0 |
-| K yerine T | %75 | %6 | %18 |
-| L yerine Y | %89 | %7 | %3 |
+| R yerine Y | %70 | %30 | **%0** |
+| R yerine D | %95 | %5 | **%0** |
+| R yerine L | %59 | %34 | %7 |
+| R yerine V/W | %41 | %36 | **%23** (zayıf) |
+| R yutuldu | %20 | %64 | %16 |
+| S yerine Ş | %92 | %5 | %3 |
+| S yerine T | %55 | %24 | %21 |
+| Ş yerine S | %96 | %4 | 0 |
+| K yerine T | %59 | %22 | %19 |
+| L yerine Y | %89 | %7 | %4 |
 
-Okuma: R yerine Y söylendiğinde model bunu neredeyse hiç “doğru” saymıyor;
-ya hatayı adlandırıyor ya da “net değil” diyor.
+Okuma: R yerine Y ve R yerine D söylendiğinde model bunları hiç “doğru”
+saymıyor. R yerine V/W en zayıf nokta; TTS'in ürettiği “v” sesi R'ye yakın
+çıkıyor olabilir, gerçek seste ayrıca ölçülmeli.
 
 ### 3) Uçtan uca (telefondaki Dart kodu)
 
@@ -93,7 +109,7 @@ ya hatayı adlandırıyor ya da “net değil” diyor.
 gerçek ONNX modeliyle çalışır:
 
 - radyo → Doğru %98
-- yadyo → R yerine Y %91
+- yadyo → R yerine Y %89 (doğru %1,4 → “hata”)
 - kar / kay ayrımı → %99,9 / %93
 
 ## Dürüst sınırlar

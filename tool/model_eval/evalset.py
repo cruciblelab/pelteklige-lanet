@@ -8,12 +8,13 @@ WORDS={
  'ş':['şeker','şapka','şişe','şemsiye','şehir','kaşık','beşik','ışık','güneş','kuş','beş','taş'],
 }
 # sentezlenebilen hatalar (harf değişimi ile)
-SYN={'r':[('y','R yerine Y'),('l','R yerine L'),('','R yutuldu')],'s':[('ş','S yerine Ş'),('t','S yerine T')],
+SYN={'r':[('y','R yerine Y'),('l','R yerine L'),('d','R yerine D'),('v','R yerine V/W'),('','R yutuldu')],'s':[('ş','S yerine Ş'),('t','S yerine T')],
      'k':[('t','K yerine T')],'l':[('y','L yerine Y')],'ş':[('s','Ş yerine S')]}
 os.makedirs('ev',exist_ok=True)
+VOICE=os.environ.get('VOICE','tr_TR-dfki-medium.onnx')
 def synth(text, path, ls):
     if not os.path.exists(path):
-        subprocess.run(['piper','-m','tr_TR-dfki-medium.onnx','-f',path,'--length_scale',str(ls)],input=(text+'.').encode(),capture_output=True)
+        subprocess.run(['piper','-m',VOICE,'-f',path,'--length_scale',str(ls)],input=(text+'.').encode(),capture_output=True)
     a,sr=sf.read(path,dtype='float32'); return librosa.resample(a,orig_sr=sr,target_sr=16000)
 rows=[]
 for tgt,words in WORDS.items():

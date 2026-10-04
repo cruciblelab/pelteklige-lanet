@@ -15,11 +15,15 @@ class PronunciationPanel extends StatefulWidget {
   final String targetLetter;
   final String soundId;
 
+  /// Her analizden sonra genel sonuç (alakasız söz ya da sessizlikte çağrılmaz).
+  final void Function(Verdict overall)? onResult;
+
   const PronunciationPanel({
     super.key,
     required this.text,
     required this.targetLetter,
     required this.soundId,
+    this.onResult,
   });
 
   @override
@@ -120,15 +124,23 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
         widget.targetLetter,
       );
       if (!mounted) return;
-      if (!r.mismatch && r.checks.isNotEmpty) {
-        final allGood = r.checks.every((c) => c.verdict == Verdict.correct);
-        Settings.instance.logAttempt(widget.soundId, good: allGood);
-      }
       setState(() {
         _phase = _Phase.done;
         _result = r;
         _recording = rec;
       });
+      if (!r.mismatch && r.checks.isNotEmpty) {
+        final overall = r.checks.any((c) => c.verdict == Verdict.error)
+            ? Verdict.error
+            : r.checks.every((c) => c.verdict == Verdict.correct)
+            ? Verdict.correct
+            : Verdict.unsure;
+        Settings.instance.logAttempt(
+          widget.soundId,
+          good: overall == Verdict.correct,
+        );
+        widget.onResult?.call(overall);
+      }
     } catch (e) {
       setState(() {
         _phase = _Phase.idle;
@@ -275,20 +287,40 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
             '${c.topError.key.toLowerCase()} ${pct(c.topError.value)}. Tekrar dene.',
       ),
     };
+    final tip = c.verdict == Verdict.correct
+        ? null
+        : PronunciationScorer.tips[c.topError.key];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 8),
-          DefaultTextStyle.merge(
-            style: theme.textTheme.titleMedium,
-            child: wordSpan,
+          Row(
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(width: 8),
+              DefaultTextStyle.merge(
+                style: theme.textTheme.titleMedium,
+                child: wordSpan,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(msg, style: TextStyle(color: color)),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(msg, style: TextStyle(color: color)),
-          ),
+          if (tip != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 30, top: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.lightbulb_outline, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(tip)),
+                ],
+              ),
+            ),
         ],
       ),
     );

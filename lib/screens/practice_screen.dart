@@ -2,27 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../audio/pronunciation_scorer.dart';
 import '../models/sound.dart';
-import '../services/settings.dart';
+import '../services/progress.dart';
 import '../services/tts.dart';
 import '../utils/text_align.dart';
 import '../widgets/pronunciation_panel.dart';
-import '../widgets/record_panel.dart';
 import '../widgets/speech_check.dart';
 import '../widgets/word_feedback.dart';
+import 'bridge_screen.dart';
 
-/// Tek tek hece/kelime/cümle alıştırması:
-/// dinle → söyle ve kaydet → kendini dinle → kendini değerlendir (→ tanıyıcıya kontrol ettir).
+/// Bir basamağın alıştırması: dinle → söyle → ses analizi sonucu.
+/// Doğru söyleyince bir sonraki öğeye kendiliğinden geçer.
 class PracticeScreen extends StatefulWidget {
   final SoundInfo sound;
-  final String title;
-  final List<String> items;
+  final Level level;
 
-  const PracticeScreen({
-    super.key,
-    required this.sound,
-    required this.title,
-    required this.items,
-  });
+  const PracticeScreen({super.key, required this.sound, required this.level});
 
   @override
   State<PracticeScreen> createState() => _PracticeScreenState();
@@ -31,17 +25,29 @@ class PracticeScreen extends StatefulWidget {
 class _PracticeScreenState extends State<PracticeScreen> {
   final _page = PageController();
   int _index = 0;
-  final Map<int, bool> _rated = {};
   final Map<int, (String, AlignmentResult)> _checks = {};
 
-  String get _item => widget.items[_index];
+  List<String> get _items => widget.level.items;
 
-  void _rate(bool good) {
-    Settings.instance.logAttempt(widget.sound.id, good: good);
-    setState(() => _rated[_index] = good);
-    if (good && _index < widget.items.length - 1) {
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) {
+  @override
+  void dispose() {
+    _page.dispose();
+    Tts.instance.stop();
+    super.dispose();
+  }
+
+  void _onResult(int i, Verdict v) {
+    final passedNow = Progress.instance.record(
+      widget.sound.id,
+      widget.level.id,
+      v == Verdict.correct,
+    );
+    setState(() {});
+    if (passedNow) {
+      showLevelPassedDialog(context, widget.sound, widget.level);
+    } else if (v == Verdict.correct && i < _items.length - 1) {
+      Future.delayed(const Duration(milliseconds: 1400), () {
+        if (mounted && _index == i) {
           _page.nextPage(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOut,
@@ -52,26 +58,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 
   @override
-  void dispose() {
-    _page.dispose();
-    Tts.instance.stop();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final done = _rated.length;
-    final good = _rated.values.where((v) => v).length;
-    final isSentence = _item.contains(' ');
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.sound.letter} · ${widget.title}'),
+        title: Text('${widget.sound.letter} · ${widget.level.title}'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
-          child: LinearProgressIndicator(
-            value: (_index + 1) / widget.items.length,
-          ),
+          child: LinearProgressIndicator(value: (_index + 1) / _items.length),
         ),
       ),
       body: Column(
@@ -79,27 +73,29 @@ class _PracticeScreenState extends State<PracticeScreen> {
           Expanded(
             child: PageView.builder(
               controller: _page,
-              itemCount: widget.items.length,
+              itemCount: _items.length,
               onPageChanged: (i) => setState(() => _index = i),
               itemBuilder: (context, i) {
-                final text = widget.items[i];
+                final text = _items[i];
+                final isSentence = text.contains(' ');
                 final check = _checks[i];
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       _HighlightedText(
                         text: text,
                         letter: widget.sound.letter,
                         style:
-                            (text.contains(' ')
+                            (isSentence
                                     ? theme.textTheme.headlineSmall
                                     : theme.textTheme.displayMedium)!
                                 .copyWith(fontWeight: FontWeight.w600),
                         highlight: theme.colorScheme.primary,
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       Wrap(
                         spacing: 8,
                         alignment: WrapAlignment.center,
@@ -117,64 +113,21 @@ class _PracticeScreenState extends State<PracticeScreen> {
                           ),
                         ],
                       ),
-                      if (!Tts.instance.available)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            'Telefonda Türkçe ses motoru bulunamadı. Ayarlar → Metin okuma çıkışı bölümünden Türkçe ses indirebilirsin.',
-                            style: theme.textTheme.bodySmall,
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      const SizedBox(height: 20),
-                      if (PronunciationScorer.supports(widget.sound.letter))
-                        PronunciationPanel(
-                          key: ValueKey(text),
-                          text: text,
-                          targetLetter: widget.sound.letter,
-                          soundId: widget.sound.id,
-                        ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Ya da kendin kaydet ve dinle:',
-                        style: theme.textTheme.titleSmall,
+                      const SizedBox(height: 16),
+                      PronunciationPanel(
+                        key: ValueKey(text),
+                        text: text,
+                        targetLetter: widget.sound.letter,
+                        soundId: widget.sound.id,
+                        onResult: (v) => _onResult(i, v),
                       ),
-                      const SizedBox(height: 8),
-                      RecordPanel(
-                        label: '${widget.sound.letter}: $text',
-                        category: 'alistirma',
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Kendini dinledin mi? Nasıldı?',
-                        style: theme.textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ChoiceChip(
-                            avatar: const Icon(Icons.replay),
-                            label: const Text('Tekrar deneyeyim'),
-                            selected: _rated[i] == false,
-                            onSelected: (_) => _rate(false),
-                          ),
-                          const SizedBox(width: 8),
-                          ChoiceChip(
-                            avatar: const Icon(Icons.check),
-                            label: const Text('Doğru söyledim'),
-                            selected: _rated[i] == true,
-                            onSelected: (_) => _rate(true),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      if (isSentence)
+                      if (isSentence) ...[
+                        const SizedBox(height: 8),
                         ExpansionTile(
                           tilePadding: EdgeInsets.zero,
-                          title: const Text('Kelime atlama kontrolü'),
+                          title: const Text('Atlanan kelime var mı?'),
                           subtitle: const Text(
-                            'Telefonun genel tanıyıcısı (kelime düzeyinde)',
+                            'Kelime düzeyinde kontrol (telefonun genel tanıyıcısı)',
                           ),
                           children: [
                             SpeechCheckButton(
@@ -193,15 +146,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
                                   heard: check.$1,
                                 ),
                               ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Bu tanıyıcı yanlış söylenen sesi çoğu zaman doğru kelimeye '
-                              'düzeltir; yalnızca atlanan kelimeleri bulmak için kullan. '
-                              'Ses düzeyindeki değerlendirme için yukarıdaki “Ses analizi”ni kullan.',
-                              style: theme.textTheme.bodySmall,
-                            ),
                           ],
                         ),
+                      ],
                     ],
                   ),
                 );
@@ -224,14 +171,19 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     icon: const Icon(Icons.chevron_left),
                   ),
                   Expanded(
-                    child: Text(
-                      '${_index + 1} / ${widget.items.length}'
-                      '${done > 0 ? '   ·   $good/$done doğru' : ''}',
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('${_index + 1} / ${_items.length}'),
+                        LevelStatusText(
+                          sound: widget.sound,
+                          level: widget.level,
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
-                    onPressed: _index == widget.items.length - 1
+                    onPressed: _index == _items.length - 1
                         ? null
                         : () => _page.nextPage(
                             duration: const Duration(milliseconds: 250),
@@ -247,6 +199,69 @@ class _PracticeScreenState extends State<PracticeScreen> {
       ),
     );
   }
+}
+
+/// "Son 8 denemede 5/6 doğru" ya da "Basamak geçildi".
+class LevelStatusText extends StatelessWidget {
+  final SoundInfo sound;
+  final Level level;
+
+  const LevelStatusText({super.key, required this.sound, required this.level});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Progress.instance;
+    final passed = p.isPassed(sound.id, level.id);
+    return Text(
+      passed
+          ? 'Basamak geçildi ✓'
+          : 'Basamak: son ${Progress.window} denemede '
+                '${p.recentCorrect(sound.id, level.id)}/${Progress.needed} doğru',
+      style: Theme.of(context).textTheme.bodySmall,
+    );
+  }
+}
+
+/// Basamak türüne göre doğru ekranı açar.
+Widget levelPage(SoundInfo sound, Level level) => level.kind == LevelKind.bridge
+    ? BridgeScreen(sound: sound, level: level)
+    : PracticeScreen(sound: sound, level: level);
+
+void showLevelPassedDialog(BuildContext context, SoundInfo sound, Level level) {
+  final levels = levelsFor(sound);
+  final idx = levels.indexWhere((l) => l.id == level.id);
+  final next = idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : null;
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      icon: const Icon(Icons.emoji_events, color: Colors.amber, size: 40),
+      title: Text('${level.title} tamam!'),
+      content: Text(
+        next == null
+            ? '${sound.letter} sesinin bütün basamaklarını geçtin. '
+                  'Kitap okumada pekiştirebilirsin.'
+            : 'Son ${Progress.window} denemenin en az ${Progress.needed} tanesi '
+                  'doğru. Sıradaki basamak: ${next.title}.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Burada devam et'),
+        ),
+        if (next != null)
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => levelPage(sound, next)),
+              );
+            },
+            child: const Text('Sıradakine geç'),
+          ),
+      ],
+    ),
+  );
 }
 
 /// Çalışılan harfi metin içinde renkli gösterir.

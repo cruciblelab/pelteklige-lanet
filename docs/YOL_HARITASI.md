@@ -31,7 +31,7 @@ okunacak metni bildiğimiz için her ses için bir **doğruluk puanı**
 ### Aşama 2a — Hazır çok dilli fonem modeli (tamamlandı)
 - ZIPA small CR-CTC (70 MB int8) telefonda çalışıyor; doğru/hatalı söyleyiş
   hipotezleri yarıştırılıyor. Ölçümler: [MODEL_DEGERLENDIRME.md](MODEL_DEGERLENDIRME.md).
-- Gerçek insan sesinde yanlış alarm %0–1,1. Çocuk sesi ve gerçek bozuk
+- Gerçek insan sesinde yanlış alarm %0–1,4. Çocuk sesi ve gerçek bozuk
   konuşma henüz ölçülmedi.
 
 ### Aşama 2b — Türkçe için ince ayar ya da kendi modelimiz

@@ -2,9 +2,10 @@ import json, numpy as np, soundfile as sf, librosa, feat, score, glob, os
 from collections import Counter, defaultdict
 rows=json.load(open('results.json'))
 cache={}
-def decide(probs, thr_err, thr_ok):
+def decide(probs, max_correct, thr_ok, min_top=0.5):
+    # Uygulamadaki kural: doğru < max_correct ve en olası hata >= min_top -> hata
     pc=probs['Doğru']; err=max((k for k in probs if k!='Doğru'), key=probs.get)
-    if probs[err]>=thr_err and pc<0.1: return err
+    if pc<max_correct and probs[err]>=min_top: return err
     if pc>=thr_ok: return 'Doğru'
     return '?'
 out=[]
@@ -14,8 +15,8 @@ for tgt,w,truth,spoken,ls,_,_,_ in rows:
     r=score.evaluate(lp,w,tgt); probs=dict(r[[p for p,_ in r].index(first)][1])
     out.append((tgt,truth,probs))
 json.dump(out,open('probs.json','w'),ensure_ascii=False)
-for thr in [(0.0,0.0),(0.8,0.5),(0.9,0.5),(0.9,0.3)]:
-    print('### eşik hata>=%.1f, doğru>=%.1f'%thr)
+for thr in [(0.0,0.0),(0.03,0.3)]:
+    print('### eşik doğru<%.2f ise hata, doğru>=%.1f ise doğru'%thr)
     for tgt in 'rslkş':
         cm=defaultdict(Counter)
         for t,truth,p in out:

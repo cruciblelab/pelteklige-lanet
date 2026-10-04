@@ -40,8 +40,11 @@ class SoundCheck {
       .reduce((a, b) => a.value >= b.value ? a : b);
 
   Verdict get verdict {
-    final err = topError;
-    if (err.value >= PronunciationScorer.errorThreshold && correctProb < 0.1) {
+    // Doğru olma ihtimali çok düşük ve hatalardan biri belirgin şekilde öndeyse.
+    // (Olasılık birkaç hata arasında bölünebildiği için en olası hatanın tek
+    // başına çok yüksek olması beklenmez.)
+    if (correctProb < PronunciationScorer.errorMaxCorrect &&
+        topError.value >= PronunciationScorer.errorMinTop) {
       return Verdict.error;
     }
     if (correctProb >= PronunciationScorer.correctThreshold) {
@@ -76,7 +79,10 @@ class PronunciationResult {
 }
 
 class PronunciationScorer {
-  static const errorThreshold = 0.9;
+  /// Hata: doğru < %3 ve en olası hata ≥ %50. Doğru: doğru ≥ %30.
+  /// Arası "net değil". Beş kural karşılaştırıldı: docs/MODEL_DEGERLENDIRME.md
+  static const errorMaxCorrect = 0.03;
+  static const errorMinTop = 0.5;
   static const correctThreshold = 0.3;
 
   /// Ortalama uyum bunun altındaysa söylenen başka bir şeydir.
@@ -130,6 +136,8 @@ class PronunciationScorer {
     'r': [
       ('y', 'R yerine Y'),
       ('l', 'R yerine L'),
+      ('d', 'R yerine D'),
+      ('v', 'R yerine V/W'),
       ('R_gırtlak', 'Gırtlaktan R'),
       (null, 'R yutuldu'),
     ],
@@ -152,6 +160,53 @@ class PronunciationScorer {
     'l': [('y', 'L yerine Y'), ('n', 'L yerine N')],
     't': [('k', 'T yerine K')],
     'd': [('g', 'D yerine G'), ('t', 'D yerine T')],
+  };
+
+  /// Her hata için ne yapılması gerektiğini söyleyen kısa yönlendirme.
+  static const Map<String, String> tips = {
+    'R yerine Y':
+        'Dil ucun aşağıda kalıyor. Ucunu üst ön dişlerinin arkasındaki kabarık '
+        'yere kaldır ve oraya hızlıca bir kez vur.',
+    'R yerine L': 'Dil ucun diş etine yapışıp kalıyor. Dokun ve hemen bırak, top sektirir gibi.',
+    'R yerine D':
+        'Dil ucun doğru yerde ama fazla bastırıyorsun. Aynı yere çok daha hafif '
+        've hızlı dokun.',
+    'R yerine V/W': 'Ses dudaklardan çıkıyor. Dudaklarını gevşek bırak, işi dil ucu yapsın.',
+    'Gırtlaktan R':
+        'Ses boğazın arkasından geliyor. Önce “d-d-d” de, sonra hızlandır; sesi '
+        'dil ucuna taşı.',
+    'R yutuldu': 'R duyulmadı. Kelimeyi yavaş söyle, R’ye gelince dil ucunu bilerek kaldır.',
+    'Dişler arası (peltek) S':
+        'Dil ucun dişlerin arasından çıkıyor. Dişlerini hafifçe kapat, dili '
+        'dişlerin arkasında tut.',
+    'S yerine Ş': 'Dudakların öne çıkıyor. Gülümser gibi dudaklarını yana çek.',
+    'Yanal S':
+        'Hava yanlardan kaçıyor. Dilin yanlarını azı dişlerine yapıştır, havayı '
+        'ortadan ince bir çizgi gibi üfle.',
+    'S yerine T':
+        'Havayı kesiyorsun. Dili diş etine değdirmeden, sürekli üfle: ssss.',
+    'Dişler arası (peltek) Z': 'Dil ucun dişlerin arasından çıkıyor. Dişleri hafif kapat, dili arkada tut.',
+    'Z yerine S': 'Titreşim yok. Elini boğazına koy ve sesini aç: zzzz.',
+    'Z yerine J': 'Dudakların öne çıkıyor. Gülümse, dili S konumunda tut.',
+    'Ş yerine S':
+        'Dudaklarını öne uzat (öpücük gibi) ve dilini biraz geri çek.',
+    'Ş yerine Ç': 'Dili diş etine değdirmeden, kesintisiz üfle: şşşş.',
+    'Ç yerine Ş': 'Önce dil ucunu diş etine değdir, sonra bırak: t-ş.',
+    'Ç yerine T': 'Dili bırakırken havayı ş gibi akıt: t-şşş.',
+    'Ç yerine S':
+        'Dudaklarını hafif öne uzat, dil ucunu diş etine değdirip bırak.',
+    'C yerine Ç': 'Titreşim yok. Elini boğazına koy ve sesini aç.',
+    'C yerine Z': 'Önce dil ucunu diş etine değdir, sonra bırak: d-j.',
+    'C yerine D': 'Dili bırakırken sesi j gibi akıt.',
+    'K yerine T': 'Dil ucun kalkıyor. Ucunu alt dişlerinin arkasına bastır, dilin ARKASINI kaldır.',
+    'G yerine D': 'Dil ucun kalkıyor. Ucunu alt dişlerinin arkasına bastır, dilin ARKASINI kaldır.',
+    'L yerine Y': 'Dil ucunu üst diş etine değdir ve orada tut: llll.',
+    'L yerine N':
+        'Hava burundan çıkıyor. Dil ucunu tutarken havayı ağızdan, dilin '
+        'yanlarından akıt.',
+    'T yerine K': 'Dilin arkası kalkıyor. Ucunu üst diş etine değdir.',
+    'D yerine G': 'Dilin arkası kalkıyor. Ucunu üst diş etine değdir.',
+    'D yerine T': 'Titreşim yok. Elini boğazına koy ve sesini aç.',
   };
 
   final List<String> tokens;

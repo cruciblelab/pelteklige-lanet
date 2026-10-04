@@ -6,14 +6,16 @@ yutma gibi **artikülasyon** sorunları için Türkçe bir Android alıştırma 
 > Bu uygulama bir alıştırma defteridir; tanı koymaz ve bir dil ve konuşma
 > terapistinin (DKT) yerine geçmez.
 
-| Ana ekran | S sesi | Alıştırma | Tıslama ölçer |
+| Başlangıç | Plan | R: D’den R’ye köprü | Alıştırma |
 |---|---|---|---|
-| ![](test/render/goldens/screen_home.png) | ![](test/render/goldens/screen_detail_S.png) | ![](test/render/goldens/screen_practice_R.png) | ![](test/render/goldens/screen_meter.png) |
+| ![](test/render/goldens/screen_onboarding.png) | ![](test/render/goldens/screen_home.png) | ![](test/render/goldens/screen_bridge_R.png) | ![](test/render/goldens/screen_practice_R.png) |
 
 ## Neler var?
 
 | Bölüm | Ne yapar |
 |---|---|
+| **Başlangıç ve plan** | İlk açılışta iki soru: kim çalışacak, hangi sesler zor (ya da kısa tarama testi). Ana ekranda kişisel plan ve tek dokunuşla “Devam et”. Her ses basamaklara ayrılır; ses analizi son 8 denemenin 6'sını doğru bulunca basamak geçilir. |
+| **R’ye özel** | “D’den R’ye köprü” hazırlığı (ada → ara, model R/D/Y/L yüzdelerini gösterir), R kümeleri (tren, kral…), R→Y/L/D/V-W/gırtlak/yutma ayrımı ve her hata için ne yapılacağını söyleyen yönlendirme. |
 | **Sesler** | R, L, S, Z, Ş, Ç, C, K, G, T, D için ağzın yandan kesit **animasyonu** (dil, dişler, dudaklar, hava akışı, ses telleri titreşimi), adım adım söyleyiş, ısınma hareketleri, sık hatalar. S/Z/R/K/G için “doğrusu / sık hata” karşılaştırması (ör. dişler arası peltek S). |
 | **Alıştırmalar** | Hece → kelime başı → ortası → sonu → cümle → tekerleme. Her öğede: örneği dinle (normal/yavaş), **kendi sesini kaydet ve dinle**, kendini değerlendir, istersen telefona kontrol ettir. |
 | **Kitap okuma** | Özgün kısa hikâyeler + kendi metnini yapıştırma. Üç mod: *Oku* (cümleye dokununca okunuşunu dinle), *Kaydet* (tüm okumayı kaydet), *Takip* (cümle cümle oku; atlanan kelimeler, kısaltılan kelimeler ve “r → y” gibi harf farkları gösterilir). |
@@ -30,9 +32,9 @@ yutma gibi **artikülasyon** sorunları için Türkçe bir Android alıştırma 
    düzeltmez. Kelimenin doğru hâli ile bilinen hatalı hâlleri (radyo / yadyo /
    ladyo / adyo / gırtlaktan R) yarıştırılır.
    - Gerçek insan sesinde (FLEURS) doğru söyleyişe “yanlış” deme oranı:
-     R %1,1, L %0,8, K %1,1, S ve Ş %0.
-   - Sentetik “R yerine Y” söyleyişlerinin hiçbirine “doğru” demedi: ya hatayı
-     adlandırdı ya da “net değil” dedi.
+     R %1,4, L %0,8, K %1,1, S ve Ş %0.
+   - Sentetik “R yerine Y” ve “R yerine D” söyleyişlerinin hiçbirine “doğru”
+     demedi: ya hatayı adlandırdı ya da “net değil” dedi. R yerine V/W zayıf.
    - **Çocuk sesinde ve gerçek konuşma bozukluğunda henüz ölçülmedi.**
      Ayrıntılar: [docs/MODEL_DEGERLENDIRME.md](docs/MODEL_DEGERLENDIRME.md).
 2. **Android’in konuşma tanıyıcısı:** yalnızca kitap okumada ve cümlelerde

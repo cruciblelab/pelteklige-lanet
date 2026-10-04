@@ -39,7 +39,7 @@ def ctc_score(lp, seq):
         p2=np.where(skip,p2,NEG)
         a=np.logaddexp(np.logaddexp(a,p1),p2)+E[t]
     return np.logaddexp(a[-1],a[-2])
-ERRORS={'r':[('y','R yerine Y'),('l','R yerine L'),('R_gırtlak','Gırtlaktan R'),(None,'R yutuldu')],
+ERRORS={'r':[('y','R yerine Y'),('l','R yerine L'),('d','R yerine D'),('v','R yerine V/W'),('R_gırtlak','Gırtlaktan R'),(None,'R yutuldu')],
  's':[('θ','Dişler arası (peltek) S'),('ş','S yerine Ş'),('ɬ','Yanal S'),('t','S yerine T')],
  'z':[('ð','Dişler arası Z'),('s','Z yerine S'),('j','Z yerine J')],
  'ş':[('s','Ş yerine S'),('ç','Ş yerine Ç')],

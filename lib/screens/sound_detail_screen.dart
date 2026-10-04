@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/sound.dart';
+import '../services/progress.dart';
 import '../services/tts.dart';
 import '../widgets/mouth_animation.dart';
 import 'meter_screen.dart';
@@ -21,14 +22,9 @@ class _SoundDetailScreenState extends State<SoundDetailScreen> {
   Widget build(BuildContext context) {
     final s = widget.sound;
     final theme = Theme.of(context);
-    final levels = <(String, String, List<String>)>[
-      ('Heceler', 'Sesi ünlülerle birleştir', s.syllables),
-      ('Kelime başında', s.wordsStart.take(3).join(', '), s.wordsStart),
-      ('Kelime ortasında', s.wordsMiddle.take(3).join(', '), s.wordsMiddle),
-      ('Kelime sonunda', s.wordsEnd.take(3).join(', '), s.wordsEnd),
-      ('Cümleler', 'Akıcı konuşmaya geçiş', s.sentences),
-      ('Tekerlemeler', 'Hız ve kontrol', s.tongueTwisters),
-    ].where((l) => l.$3.isNotEmpty).toList();
+    final levels = levelsFor(s);
+    final p = Progress.instance;
+    final current = p.currentLevelIndex(s);
 
     return Scaffold(
       appBar: AppBar(title: Text('${s.title}  ${s.ipa}')),
@@ -136,9 +132,10 @@ class _SoundDetailScreenState extends State<SoundDetailScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Text('Alıştırmalar', style: theme.textTheme.titleLarge),
+          Text('Basamaklar', style: theme.textTheme.titleLarge),
           Text(
-            'Kolaydan zora sırayla ilerle. Bir basamakta rahatlayınca bir sonrakine geç.',
+            'Ses analizi son ${Progress.window} denemenin ${Progress.needed} tanesini '
+            'doğru bulunca basamak geçilir. İstediğin basamağa yine de girebilirsin.',
             style: theme.textTheme.bodySmall,
           ),
           const SizedBox(height: 8),
@@ -160,25 +157,34 @@ class _SoundDetailScreenState extends State<SoundDetailScreen> {
             ),
           for (var i = 0; i < levels.length; i++)
             Card(
+              color: i == current ? theme.colorScheme.primaryContainer : null,
               child: ListTile(
-                leading: CircleAvatar(child: Text('${i + 1}')),
-                title: Text(levels[i].$1),
+                leading: CircleAvatar(
+                  backgroundColor: p.isPassed(s.id, levels[i].id)
+                      ? Colors.green
+                      : null,
+                  foregroundColor: p.isPassed(s.id, levels[i].id)
+                      ? Colors.white
+                      : null,
+                  child: p.isPassed(s.id, levels[i].id)
+                      ? const Icon(Icons.check)
+                      : Text('${i + 1}'),
+                ),
+                title: Text(levels[i].title),
                 subtitle: Text(
-                  levels[i].$2,
+                  levels[i].hint,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                trailing: Text('${levels[i].$3.length}'),
+                trailing: i == current
+                    ? const Icon(Icons.play_circle_fill)
+                    : Text(
+                        '${p.recentCorrect(s.id, levels[i].id)}/${Progress.needed}',
+                      ),
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => PracticeScreen(
-                      sound: s,
-                      title: levels[i].$1,
-                      items: levels[i].$3,
-                    ),
-                  ),
-                ),
+                  MaterialPageRoute(builder: (_) => levelPage(s, levels[i])),
+                ).then((_) => setState(() {})),
               ),
             ),
         ],
