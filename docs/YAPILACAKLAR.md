@@ -45,7 +45,11 @@ Model şimdiye kadar yalnızca yetişkin sesi ve TTS ile ölçüldü. Çökme
       sesler doğru mu?
 - [ ] R → “Hazırlık: D’den R’ye köprü”: “ada”dan “ara”ya geçerken R/D/Y/L
       yüzdeleri mantıklı değişiyor mu?
-- [ ] “radyo”, “araba”, “kırmızı” kelimelerini “Söyle, sesimi incele” ile söyle
+- [ ] Başlangıçta “R’yi nasıl söylüyorsun?” sorusunda kendi hatanı seç (ör. L gibi);
+      alıştırmalardaki R ↔ L ibresi söyleyişine uyuyor mu?
+- [ ] “Çiftler: kar mı kal mı?” basamağını dene
+- [ ] Ses detayındaki animasyonda “Üst üste” modunda fark anlaşılıyor mu?
+- [ ] “radyo”, “araba”, “kırmızı” kelimelerini alıştırmada söyle
 - [ ] Her biri için yaz: sonuç (doğru / hata / net değil ve yüzdesi) ve altındaki
       **“Duyulan sesler: /…/”** satırı
 - [ ] Mümkünse aynı kelimeyi bir de bilerek doğru (ya da birine doğru

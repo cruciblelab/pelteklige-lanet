@@ -6,6 +6,7 @@ import '../audio/phoneme_model.dart';
 import '../audio/pronunciation_scorer.dart';
 import '../data/sounds.dart';
 import '../models/sound.dart';
+import '../services/progress.dart';
 import '../widgets/model_listen_button.dart';
 
 /// Kısa tarama: her ses için iki kelime söylenir, ses analizi hangi seslerde
@@ -38,6 +39,7 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
   int _index = 0;
   final Map<String, List<Verdict>> _results = {};
   final Map<String, String> _errors = {};
+  final Map<String, Map<String, int>> _errorCounts = {};
   String? _note;
   bool _done = false;
   final Set<String> _chosen = {};
@@ -69,7 +71,12 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
         ? Verdict.correct
         : Verdict.unsure;
     if (v != Verdict.correct) {
-      _errors.putIfAbsent(_cur.sound.id, () => r.checks.first.topError.key);
+      final label = r.checks.first.topError.key;
+      final counts = _errorCounts.putIfAbsent(_cur.sound.id, () => {});
+      counts[label] = (counts[label] ?? 0) + 1;
+      _errors[_cur.sound.id] = counts.entries
+          .reduce((a, b) => a.value >= b.value ? a : b)
+          .key;
     }
     _results.putIfAbsent(_cur.sound.id, () => []).add(v);
     _next();
@@ -240,9 +247,16 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
           onPressed: _chosen.isEmpty
               ? null
-              : () => widget.onDone(
-                  widget.soundIds.where(_chosen.contains).toList(),
-                ),
+              : () {
+                  // Testte duyulan hata, o sesin odak hatası olur.
+                  for (final id in _chosen) {
+                    final e = _errors[id];
+                    if (e != null) Progress.instance.setFocusError(id, e);
+                  }
+                  widget.onDone(
+                    widget.soundIds.where(_chosen.contains).toList(),
+                  );
+                },
           child: const Text('Planı başlat'),
         ),
       ],

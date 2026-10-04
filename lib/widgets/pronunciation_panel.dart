@@ -6,16 +6,20 @@ import '../audio/voice_capture.dart';
 import '../services/recordings.dart';
 import '../services/settings.dart';
 import '../services/stt.dart';
+import 'focus_gauge.dart';
 
 enum _Phase { idle, loading, listening, analyzing, done }
 
-/// Cihaz içi fonem modeliyle hedef sesin doğru söylenip söylenmediğini gösterir.
+/// Söyle → ses analizi → "R ←●→ L" ibresi.
+///
+/// Kişinin hatası ([focusError], ör. "R yerine L") biliniyorsa yalnızca
+/// doğrusu ile o hata yarıştırılır (odaklı mod). Bilinmiyorsa ibrenin karşı
+/// ucunda o anki en olası hata durur.
 class PronunciationPanel extends StatefulWidget {
   final String text;
   final String targetLetter;
   final String soundId;
-
-  /// Her analizden sonra genel sonuç (alakasız söz ya da sessizlikte çağrılmaz).
+  final String? focusError;
   final void Function(Verdict overall)? onResult;
 
   const PronunciationPanel({
@@ -23,6 +27,7 @@ class PronunciationPanel extends StatefulWidget {
     required this.text,
     required this.targetLetter,
     required this.soundId,
+    this.focusError,
     this.onResult,
   });
 
@@ -30,13 +35,30 @@ class PronunciationPanel extends StatefulWidget {
   State<PronunciationPanel> createState() => _PronunciationPanelState();
 }
 
+class _Shown {
+  final double ratio;
+  final String errorLabel;
+  final Verdict verdict;
+  final SoundCheck check;
+  final String? otherError;
+  const _Shown(
+    this.ratio,
+    this.errorLabel,
+    this.verdict,
+    this.check,
+    this.otherError,
+  );
+}
+
 class _PronunciationPanelState extends State<PronunciationPanel> {
   _Phase _phase = _Phase.idle;
   VoiceCapture? _capture;
   double _level = 0;
   PronunciationResult? _result;
+  _Shown? _shown;
   RecordingEntry? _recording;
   String? _message;
+  bool _details = false;
 
   @override
   void dispose() {
@@ -44,19 +66,37 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
     super.dispose();
   }
 
+  /// Gösterilecek tek sonuç: hedef sesin geçtiği yerlerden en kötüsü.
+  _Shown? _pick(PronunciationResult r) {
+    if (r.mismatch || r.checks.isEmpty) return null;
+    _Shown? worst;
+    for (final c in r.checks) {
+      final _Shown s;
+      if (widget.focusError != null && c.probs.containsKey(widget.focusError)) {
+        final f = c.focus(widget.focusError!);
+        s = _Shown(f.ratio, widget.focusError!, f.verdict, c, f.otherError);
+      } else {
+        final top = c.topError;
+        final pc = c.correctProb;
+        final ratio = pc + top.value <= 0 ? 0.5 : pc / (pc + top.value);
+        s = _Shown(ratio, top.key, c.verdict, c, null);
+      }
+      if (worst == null || s.ratio < worst.ratio) worst = s;
+    }
+    return worst;
+  }
+
   Future<void> _start() async {
     if (_phase == _Phase.listening) {
       await _capture?.stop();
       return;
     }
-    if (await RecordingStore.instance.isRecording) {
-      _snack('Önce diğer kaydı durdur.');
-      return;
-    }
+    if (await RecordingStore.instance.isRecording) return;
     if (Stt.instance.isListening) await Stt.instance.cancel();
     setState(() {
       _message = null;
       _result = null;
+      _shown = null;
       _recording = null;
     });
 
@@ -65,8 +105,7 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
       if (!await PhonemeModel.isBundled()) {
         setState(
           () => _message =
-              'Bu sürümde ses modeli yok. CI ile derlenen APK’yı kullan '
-              '(yerelde: tool/fetch_model.sh).',
+              'Bu sürümde ses modeli yok (yerelde: tool/fetch_model.sh).',
         );
         return;
       }
@@ -103,9 +142,7 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
     if (!captured.hadSpeech) {
       setState(() {
         _phase = _Phase.idle;
-        _message =
-            'Ses duymadım. Telefonu ağzına biraz daha yaklaştırıp '
-            'normal sesle tekrar dene.';
+        _message = 'Ses duymadım. Biraz daha yakından, normal sesle söyle.';
       });
       return;
     }
@@ -124,22 +161,23 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
         widget.targetLetter,
       );
       if (!mounted) return;
+      final shown = _pick(r);
       setState(() {
         _phase = _Phase.done;
         _result = r;
+        _shown = shown;
         _recording = rec;
+        if (shown == null) {
+          _message =
+              '“${widget.text}” gibi duyulmadı. Kelimeyi tam ve net söyle.';
+        }
       });
-      if (!r.mismatch && r.checks.isNotEmpty) {
-        final overall = r.checks.any((c) => c.verdict == Verdict.error)
-            ? Verdict.error
-            : r.checks.every((c) => c.verdict == Verdict.correct)
-            ? Verdict.correct
-            : Verdict.unsure;
+      if (shown != null) {
         Settings.instance.logAttempt(
           widget.soundId,
-          good: overall == Verdict.correct,
+          good: shown.verdict == Verdict.correct,
         );
-        widget.onResult?.call(overall);
+        widget.onResult?.call(shown.verdict);
       }
     } catch (e) {
       setState(() {
@@ -149,189 +187,152 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
     }
   }
 
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final busy = _phase == _Phase.loading || _phase == _Phase.analyzing;
-    return Card(
-      color: theme.colorScheme.surfaceContainerHigh,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.memory, size: 18),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Ses analizi (telefonda, internetsiz)',
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: busy ? null : _start,
-              icon: busy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(_phase == _Phase.listening ? Icons.stop : Icons.mic),
-              label: Text(switch (_phase) {
-                _Phase.loading => 'Model hazırlanıyor…',
-                _Phase.listening => 'Dinliyorum… (bitince kendisi durur)',
-                _Phase.analyzing => 'İnceliyorum…',
-                _ => 'Söyle, sesimi incele',
-              }),
-            ),
-            if (_phase == _Phase.listening)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: LinearProgressIndicator(value: _level),
-              ),
-            if (_message != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(_message!),
-              ),
-            if (_result != null) ..._resultView(theme, _result!),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _resultView(ThemeData theme, PronunciationResult r) {
-    final widgets = <Widget>[const SizedBox(height: 10)];
-    if (r.mismatch) {
-      widgets.add(
-        _line(
-          Icons.help_outline,
-          Colors.orange,
-          'Söylediğin, “${r.text}” metnine benzemedi. Kelimeyi tam ve net söyleyip tekrar dene.',
-        ),
-      );
-    } else {
-      for (final c in r.checks) {
-        widgets.add(_checkRow(theme, c));
-      }
-    }
-    widgets.add(
-      Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: Row(
-          children: [
-            if (_recording != null)
-              TextButton.icon(
-                onPressed: () => RecordingStore.instance.play(_recording!.path),
-                icon: const Icon(Icons.hearing),
-                label: const Text('Bu kaydı dinle'),
-              ),
-            const Spacer(),
-            Flexible(
-              child: Text(
-                'Duyulan sesler: /${r.heardPhones}/',
-                style: theme.textTheme.bodySmall,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    return widgets;
-  }
-
-  Widget _checkRow(ThemeData theme, SoundCheck c) {
-    final w = c.word;
-    final i = c.indexInWord;
-    final wordSpan = Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: w.substring(0, i)),
-          TextSpan(
-            text: w[i],
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              decoration: TextDecoration.underline,
-            ),
+    final shown = _shown;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: MicButton(
+            listening: _phase == _Phase.listening,
+            busy: busy,
+            level: _level,
+            onTap: _start,
           ),
-          TextSpan(text: w.substring(i + 1)),
-        ],
-      ),
+        ),
+        Text(
+          switch (_phase) {
+            _Phase.loading => 'Model hazırlanıyor…',
+            _Phase.listening => 'Dinliyorum… bitince kendisi durur',
+            _Phase.analyzing => 'İnceliyorum…',
+            _ when shown != null => 'Tekrar denemek için dokun',
+            _ => 'Dokun ve söyle',
+          },
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium,
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+          child: shown == null
+              ? (_message == null
+                    ? const SizedBox(width: double.infinity)
+                    : Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(_message!, textAlign: TextAlign.center),
+                      ))
+              : _resultView(theme, shown),
+        ),
+      ],
     );
-    String pct(double p) => '%${(p * 100).round()}';
-    final (icon, color, msg) = switch (c.verdict) {
-      Verdict.correct => (
-        Icons.check_circle,
-        Colors.green,
-        'Doğru duyuldu (${pct(c.correctProb)})',
-      ),
-      Verdict.error => (
-        Icons.cancel,
-        Colors.red,
-        '${c.topError.key} (${pct(c.topError.value)})',
-      ),
+  }
+
+  Widget _resultView(ThemeData theme, _Shown s) {
+    final letter = widget.targetLetter;
+    final errShort = PronunciationScorer.errorShort(s.errorLabel);
+    final (title, color) = switch (s.verdict) {
+      Verdict.correct => ('Harika, bu bir $letter!', FocusGauge.good),
+      Verdict.error => ('$errShort gibi duyuldu', FocusGauge.bad),
       Verdict.unsure => (
-        Icons.help,
-        Colors.orange,
-        'Net değil: doğru ${pct(c.correctProb)}, '
-            '${c.topError.key.toLowerCase()} ${pct(c.topError.value)}. Tekrar dene.',
+        '$letter ile $errShort arasında',
+        const Color(0xFF8D6E63),
       ),
     };
-    final tip = c.verdict == Verdict.correct
+    final tip = s.verdict == Verdict.correct
         ? null
-        : PronunciationScorer.tips[c.topError.key];
+        : PronunciationScorer.tips[s.errorLabel];
+    final multi = (_result?.checks.length ?? 0) > 1;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.only(top: 12),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(width: 8),
-              DefaultTextStyle.merge(
-                style: theme.textTheme.titleMedium,
-                child: wordSpan,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(msg, style: TextStyle(color: color)),
-              ),
-            ],
+          FocusGauge(
+            ratio: s.ratio,
+            correctLabel: letter,
+            errorLabel: errShort,
+            errorBelow: FocusResult.errorBelow,
+            correctFrom: FocusResult.correctFrom,
           ),
+          TweenAnimationBuilder<double>(
+            key: ValueKey(_recording?.path),
+            tween: Tween(begin: 0.6, end: 1),
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeOutBack,
+            builder: (context, v, child) =>
+                Transform.scale(scale: v, child: child),
+            child: Text(
+              multi ? '$title  ·  ${s.check.word}' : title,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          if (s.otherError != null)
+            Text(
+              'Bu sefer daha çok “${PronunciationScorer.errorShort(s.otherError!)}” gibi duyuldu.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
           if (tip != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 30, top: 2),
+            Container(
+              margin: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.lightbulb_outline, size: 18),
-                  const SizedBox(width: 6),
-                  Expanded(child: Text(tip)),
+                  const Icon(Icons.lightbulb_outline),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(tip, style: theme.textTheme.bodyLarge)),
                 ],
               ),
             ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_recording != null)
+                TextButton.icon(
+                  onPressed: () =>
+                      RecordingStore.instance.play(_recording!.path),
+                  icon: const Icon(Icons.hearing),
+                  label: const Text('Kendimi dinle'),
+                ),
+              TextButton(
+                onPressed: () => setState(() => _details = !_details),
+                child: Text(_details ? 'Ayrıntıyı gizle' : 'Ayrıntı'),
+              ),
+            ],
+          ),
+          if (_details && _result != null) _detailsView(theme, _result!),
         ],
       ),
     );
   }
 
-  Widget _line(IconData icon, Color color, String text) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Icon(icon, color: color),
-      const SizedBox(width: 8),
-      Expanded(child: Text(text)),
-    ],
-  );
+  Widget _detailsView(ThemeData theme, PronunciationResult r) {
+    final style = theme.textTheme.bodySmall;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Modelin duyduğu sesler: /${r.heardPhones}/', style: style),
+        for (final c in r.checks) ...[
+          const SizedBox(height: 4),
+          Text('“${c.word}” içindeki ${widget.targetLetter}:', style: style),
+          for (final e
+              in (c.probs.entries.toList()
+                ..sort((a, b) => b.value.compareTo(a.value))))
+            Text('   ${e.key}: %${(e.value * 100).round()}', style: style),
+        ],
+      ],
+    );
+  }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../audio/pronunciation_scorer.dart';
 import '../data/sounds.dart';
+import '../models/sound.dart';
 import '../services/progress.dart';
 import '../services/settings.dart';
 import 'screening_screen.dart';
@@ -17,6 +19,47 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _step = 0;
   final Set<String> _selected = {...Progress.instance.focusSounds};
 
+  /// "Nasıl söylüyorsun?" sorulacak sesler ve sıradaki.
+  List<SoundInfo> _ask = [];
+  int _askIndex = 0;
+
+  void _startAsking() {
+    final chosen = sounds.where((s) => _selected.contains(s.id)).toList();
+    final ask = chosen
+        .where(
+          (s) =>
+              (PronunciationScorer.errors[s.letter.toLowerCase()] ?? const [])
+                  .length >
+              1,
+        )
+        .toList();
+    // Tek olası hatası olan seslerde soru sormaya gerek yok.
+    for (final s in chosen.where((s) => !ask.contains(s))) {
+      final errs = PronunciationScorer.errors[s.letter.toLowerCase()];
+      if (errs != null && errs.length == 1) {
+        Progress.instance.setFocusError(s.id, errs.first.$2);
+      }
+    }
+    if (ask.isEmpty) {
+      _finish(chosen.map((s) => s.id).toList());
+      return;
+    }
+    setState(() {
+      _ask = ask;
+      _askIndex = 0;
+      _step = 2;
+    });
+  }
+
+  void _answer(String? errorLabel) {
+    Progress.instance.setFocusError(_ask[_askIndex].id, errorLabel);
+    if (_askIndex < _ask.length - 1) {
+      setState(() => _askIndex++);
+    } else {
+      _finish(sounds.map((s) => s.id).where(_selected.contains).toList());
+    }
+  }
+
   void _finish(List<String> focus) {
     final p = Progress.instance;
     p.focusSounds = focus.isEmpty ? ['R'] : focus;
@@ -31,7 +74,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: _step == 0 ? _who(theme) : _which(theme),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, a) => FadeTransition(
+              opacity: a,
+              child: SlideTransition(
+                position: Tween(
+                  begin: const Offset(0.08, 0),
+                  end: Offset.zero,
+                ).animate(a),
+                child: child,
+              ),
+            ),
+            child: KeyedSubtree(
+              key: ValueKey('$_step/$_askIndex'),
+              child: switch (_step) {
+                0 => _who(theme),
+                1 => _which(theme),
+                _ => _how(theme),
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -120,12 +183,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       const Spacer(),
       FilledButton(
         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-        onPressed: _selected.isEmpty
-            ? null
-            : () => _finish(
-                sounds.map((s) => s.id).where(_selected.contains).toList(),
-              ),
-        child: const Text('Başla'),
+        onPressed: _selected.isEmpty ? null : _startAsking,
+        child: const Text('Devam'),
       ),
       const SizedBox(height: 10),
       OutlinedButton.icon(
@@ -163,4 +222,79 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
     ],
   );
+
+  /// "R'yi nasıl söylüyorsun?" — tek dokunuşla hata türü.
+  Widget _how(ThemeData theme) {
+    final snd = _ask[_askIndex];
+    final errs = PronunciationScorer.errors[snd.letter.toLowerCase()]!;
+    final example = snd.wordsMiddle.isNotEmpty
+        ? snd.wordsMiddle.first
+        : snd.wordsStart.first;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: IconButton(
+            onPressed: () => setState(() {
+              if (_askIndex > 0) {
+                _askIndex--;
+              } else {
+                _step = 1;
+              }
+            }),
+            icon: const Icon(Icons.arrow_back),
+          ),
+        ),
+        Text(
+          '${snd.letter} sesini nasıl söylüyorsun?',
+          style: theme.textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Seçtiğin farka odaklanacağız. Emin değilsen “Bilmiyorum” de.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: ListView(
+            children: [
+              for (final e in errs)
+                Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      child: Text(
+                        PronunciationScorer.errorShort(e.$2),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    title: Text(PronunciationScorer.errorPlain(e.$2)),
+                    subtitle: Text(
+                      '$example → ${PronunciationScorer.errorExample(example, snd.letter, e.$2)}',
+                    ),
+                    onTap: () => _answer(e.$2),
+                  ),
+                ),
+              Card(
+                child: ListTile(
+                  leading: const CircleAvatar(child: Icon(Icons.help_outline)),
+                  title: const Text('Bilmiyorum'),
+                  subtitle: const Text(
+                    'Uygulama söyleyişlerinden bulmaya çalışır',
+                  ),
+                  onTap: () => _answer(null),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_ask.length > 1)
+          Text(
+            '${_askIndex + 1} / ${_ask.length}',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall,
+          ),
+      ],
+    );
+  }
 }

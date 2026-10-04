@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../audio/pronunciation_scorer.dart';
 import '../models/sound.dart';
 import '../services/progress.dart';
 import '../services/tts.dart';
-import '../widgets/mouth_animation.dart';
+import '../widgets/articulation/articulation_view.dart';
+import '../widgets/articulation/articulations.dart';
 import 'meter_screen.dart';
 import 'practice_screen.dart';
 
@@ -16,8 +18,6 @@ class SoundDetailScreen extends StatefulWidget {
 }
 
 class _SoundDetailScreenState extends State<SoundDetailScreen> {
-  bool _showError = false;
-
   @override
   Widget build(BuildContext context) {
     final s = widget.sound;
@@ -25,60 +25,26 @@ class _SoundDetailScreenState extends State<SoundDetailScreen> {
     final levels = levelsFor(s);
     final p = Progress.instance;
     final current = p.currentLevelIndex(s);
+    final focus = p.focusError(s.id);
 
     return Scaffold(
       appBar: AppBar(title: Text('${s.title}  ${s.ipa}')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  MouthAnimation(
-                    key: ValueKey(_showError),
-                    pose: _showError ? s.errorPose! : s.pose,
-                    airflow: s.airflow,
-                    voiced: s.voiced,
-                    tongueColor: _showError ? const Color(0xFFB0737D) : null,
-                  ),
-                  const SizedBox(height: 8),
-                  if (s.errorPose != null)
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(
-                          value: false,
-                          label: Text('Doğrusu'),
-                          icon: Icon(Icons.check),
-                        ),
-                        ButtonSegment(
-                          value: true,
-                          label: Text('Sık hata'),
-                          icon: Icon(Icons.close),
-                        ),
-                      ],
-                      selected: {_showError},
-                      onSelectionChanged: (v) =>
-                          setState(() => _showError = v.first),
-                    ),
-                  if (_showError && s.errorLabel != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        s.errorLabel!,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: theme.colorScheme.error),
-                      ),
-                    ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Durdurmak için çizime dokun',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
+          ArticulationView(
+            key: ValueKey(focus),
+            correct: articulationForLetter(s.letter),
+            error: focus == null ? null : articulationForError(focus),
+            errorTitle: focus == null
+                ? null
+                : PronunciationScorer.errorShort(focus),
+          ),
+          const SizedBox(height: 12),
+          _MyErrorPicker(
+            sound: s,
+            value: focus,
+            onChanged: (v) => setState(() => p.setFocusError(s.id, v)),
           ),
           const SizedBox(height: 8),
           Text(s.summary, style: theme.textTheme.bodyLarge),
@@ -97,7 +63,6 @@ class _SoundDetailScreenState extends State<SoundDetailScreen> {
           _Section(
             title: 'Nasıl söylenir?',
             icon: Icons.format_list_numbered,
-            initiallyExpanded: true,
             children: [
               for (var i = 0; i < s.steps.length; i++)
                 ListTile(
@@ -197,13 +162,11 @@ class _Section extends StatelessWidget {
   final String title;
   final IconData icon;
   final List<Widget> children;
-  final bool initiallyExpanded;
 
   const _Section({
     required this.title,
     required this.icon,
     required this.children,
-    this.initiallyExpanded = false,
   });
 
   @override
@@ -213,8 +176,78 @@ class _Section extends StatelessWidget {
       child: ExpansionTile(
         leading: Icon(icon),
         title: Text(title),
-        initiallyExpanded: initiallyExpanded,
         children: children,
+      ),
+    );
+  }
+}
+
+/// "Ben nasıl söylüyorum?": kişinin kendi hatasını seçmesi. Seçim animasyonu,
+/// ses analizini ve alıştırmaları o ayrıma odaklar.
+class _MyErrorPicker extends StatelessWidget {
+  final SoundInfo sound;
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  const _MyErrorPicker({
+    required this.sound,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final errs =
+        PronunciationScorer.errors[sound.letter.toLowerCase()] ?? const [];
+    if (errs.isEmpty) return const SizedBox.shrink();
+    final example = sound.wordsMiddle.isNotEmpty
+        ? sound.wordsMiddle.first
+        : sound.wordsStart.first;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Ben nasıl söylüyorum?', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final e in errs)
+                  ChoiceChip(
+                    label: Text(() {
+                      final ex = PronunciationScorer.errorExample(
+                        example,
+                        sound.letter,
+                        e.$2,
+                      );
+                      final chip = PronunciationScorer.errorChip(e.$2);
+                      return ex == example ? chip : '$chip  ·  $ex';
+                    }()),
+                    selected: value == e.$2,
+                    onSelected: (sel) => onChanged(sel ? e.$2 : null),
+                  ),
+                ChoiceChip(
+                  label: const Text('Bilmiyorum'),
+                  selected: value == null,
+                  onSelected: (_) => onChanged(null),
+                ),
+              ],
+            ),
+            if (value != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Analiz ve alıştırmalar ${sound.letter} ile '
+                  '${PronunciationScorer.errorShort(value!)} ayrımına odaklanıyor.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

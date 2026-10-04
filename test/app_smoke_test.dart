@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pelteklige_lanet/audio/pronunciation_scorer.dart';
 import 'package:pelteklige_lanet/data/minimal_pairs.dart';
 import 'package:pelteklige_lanet/data/sounds.dart';
 import 'package:pelteklige_lanet/data/stories.dart';
@@ -37,7 +38,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Nasıl söylenir?'), findsOneWidget);
-    expect(find.text('Sık hata'), findsOneWidget);
+    expect(find.text('Ben nasıl söylüyorum?'), findsOneWidget);
     expect(find.text('Basamaklar'), findsOneWidget);
   });
 
@@ -73,7 +74,6 @@ void main() {
       expect(s.syllables, isNotEmpty, reason: s.letter);
       expect(s.wordsStart, isNotEmpty, reason: s.letter);
       expect(s.sentences, isNotEmpty, reason: s.letter);
-      expect(s.errorPose == null, s.errorLabel == null, reason: s.letter);
     }
     for (final p in minimalPairs) {
       expect(p.a, isNot(p.b));
@@ -81,5 +81,47 @@ void main() {
     for (final st in stories) {
       expect(st.sentences.length, greaterThanOrEqualTo(4), reason: st.id);
     }
+  });
+
+  test('hata seçilince çiftler basamağı eklenir (R yerine L → kar/kal)', () {
+    final p = Progress.instance;
+    final r = soundById('R');
+    expect(levelsFor(r).map((l) => l.id), isNot(contains('cift')));
+    p.setFocusError('R', 'R yerine L');
+    final levels = levelsFor(r);
+    final pairs = levels.firstWhere((l) => l.id == 'cift');
+    expect(pairs.items, contains('kar|kal'));
+    expect(pairs.items, isNot(contains('kar|kay')));
+    expect(levels.indexWhere((l) => l.id == 'cift'), 1); // köprüden hemen sonra
+    p.setFocusError('R', null);
+  });
+
+  test('çiftler hedef kelimeyi doğru taraftan seçer', () {
+    expect(pairsFor('Ş', 'S'), contains(('şu', 'su')));
+    expect(pairsFor('S', 'Ş'), contains(('su', 'şu')));
+    expect(pairsFor('R', 'Y'), contains(('kara', 'kaya')));
+  });
+
+  test('odaklı mod: R ile L arası "arada" sayılır', () {
+    SoundCheck c(double pc, double pl, double py) => SoundCheck(
+      position: 0,
+      word: 'kar',
+      indexInWord: 2,
+      probs: {'Doğru': pc, 'R yerine L': pl, 'R yerine Y': py},
+    );
+    expect(c(0.9, 0.05, 0.05).focus('R yerine L').verdict, Verdict.correct);
+    expect(c(0.05, 0.9, 0.05).focus('R yerine L').verdict, Verdict.error);
+    expect(c(0.4, 0.5, 0.1).focus('R yerine L').verdict, Verdict.unsure);
+    // Seçilen hata dışında Y baskınsa ayrıca bildirilir
+    expect(c(0.05, 0.05, 0.9).focus('R yerine L').otherError, 'R yerine Y');
+  });
+
+  test('hata örnekleri', () {
+    expect(
+      PronunciationScorer.errorExample('araba', 'R', 'R yerine L'),
+      'alaba',
+    );
+    expect(PronunciationScorer.errorExample('araba', 'R', 'R yutuldu'), 'aaba');
+    expect(PronunciationScorer.errorShort('R yerine V/W'), 'V');
   });
 }

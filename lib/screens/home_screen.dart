@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../audio/pronunciation_scorer.dart';
 import '../data/sounds.dart';
 import '../services/progress.dart';
 import '../services/settings.dart';
@@ -209,6 +210,12 @@ class _PlanCard extends StatelessWidget {
                               levelsFor(snd)[p.currentLevelIndex(snd)].title,
                               style: theme.textTheme.titleSmall,
                             ),
+                            if (p.focusError(snd.id) case final e?)
+                              Text(
+                                'Odak: ${snd.letter} ↔ '
+                                '${PronunciationScorer.errorShort(e)}',
+                                style: theme.textTheme.bodySmall,
+                              ),
                             const SizedBox(height: 4),
                             LinearProgressIndicator(
                               value: p.passedCount(snd) / levelsFor(snd).length,

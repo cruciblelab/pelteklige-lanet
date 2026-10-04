@@ -14,8 +14,10 @@ yutma gibi **artikülasyon** sorunları için Türkçe bir Android alıştırma 
 
 | Bölüm | Ne yapar |
 |---|---|
-| **Başlangıç ve plan** | İlk açılışta iki soru: kim çalışacak, hangi sesler zor (ya da kısa tarama testi). Ana ekranda kişisel plan ve tek dokunuşla “Devam et”. Her ses basamaklara ayrılır; ses analizi son 8 denemenin 6'sını doğru bulunca basamak geçilir. |
-| **R’ye özel** | “D’den R’ye köprü” hazırlığı (ada → ara, model R/D/Y/L yüzdelerini gösterir), R kümeleri (tren, kral…), R→Y/L/D/V-W/gırtlak/yutma ayrımı ve her hata için ne yapılacağını söyleyen yönlendirme. |
+| **Başlangıç ve plan** | İlk açılışta kısa sorular: kim çalışacak, hangi sesler zor ve **nasıl söylüyorsun** (ör. “R’yi L gibi ya da L ile R arası”); ya da kısa tarama testi hatayı kendisi bulur. Ana ekranda kişisel plan ve tek dokunuşla “Devam et”. Her ses basamaklara ayrılır; ses analizi son 8 denemenin 6'sını doğru bulunca basamak geçilir. |
+| **Kendi hatana odaklı** | Hatanı seçince analiz yalnızca o ayrıma bakar ve sonucu bir **R ←●→ L ibresiyle** gösterir (“R ile L arasında” dahil). Alıştırmalara “kar mı kal mı?” çiftleri eklenir. |
+| **R’ye özel** | “D’den R’ye köprü” hazırlığı (ada → ara, R ↔ D ibresi), R kümeleri (tren, kral…), R→Y/L/D/V-W/gırtlak/yutma ayrımı ve her hata için ne yapılacağını söyleyen yönlendirme. |
+| **Animasyon** | Ağzın yan kesiti: dil, damak, küçük dil, dişler, dudaklar; R’de dil ucunun diş etine tek vuruşu ve temas dalgası, L’de yapışık dil ve yanlardan akan hava, D/T’de kapanma–basınç–patlama. “Doğrusu / Senin / Üst üste” karşılaştırması, adım adım alt yazı, yavaş çekim. |
 | **Sesler** | R, L, S, Z, Ş, Ç, C, K, G, T, D için ağzın yandan kesit **animasyonu** (dil, dişler, dudaklar, hava akışı, ses telleri titreşimi), adım adım söyleyiş, ısınma hareketleri, sık hatalar. S/Z/R/K/G için “doğrusu / sık hata” karşılaştırması (ör. dişler arası peltek S). |
 | **Alıştırmalar** | Hece → kelime başı → ortası → sonu → cümle → tekerleme. Her öğede: örneği dinle (normal/yavaş), **kendi sesini kaydet ve dinle**, kendini değerlendir, istersen telefona kontrol ettir. |
 | **Kitap okuma** | Özgün kısa hikâyeler + kendi metnini yapıştırma. Üç mod: *Oku* (cümleye dokununca okunuşunu dinle), *Kaydet* (tüm okumayı kaydet), *Takip* (cümle cümle oku; atlanan kelimeler, kısaltılan kelimeler ve “r → y” gibi harf farkları gösterilir). |

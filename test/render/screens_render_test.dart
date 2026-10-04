@@ -18,6 +18,8 @@ import 'package:pelteklige_lanet/screens/reading_screen.dart';
 import 'package:pelteklige_lanet/screens/sound_detail_screen.dart';
 import 'package:pelteklige_lanet/screens/bridge_screen.dart';
 import 'package:pelteklige_lanet/screens/onboarding_screen.dart';
+import 'package:pelteklige_lanet/screens/pairs_screen.dart';
+import 'package:pelteklige_lanet/widgets/focus_gauge.dart';
 import 'package:pelteklige_lanet/services/progress.dart';
 import 'package:pelteklige_lanet/services/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,6 +54,7 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'onboarded': true,
       'focusSounds': ['R', 'S'],
+      'focusErrors': '{"R": "R yerine L"}',
     });
     await Settings.instance.load();
     await Progress.instance.load();
@@ -87,6 +90,22 @@ void main() {
       level: levelsFor(soundById('R')).first,
     ),
     'onboarding': () => const OnboardingScreen(),
+    'pairs_R': () =>
+        PairsScreen(sound: soundById('R'), level: levelsFor(soundById('R'))[1]),
+    'gauges': () => const Scaffold(
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            FocusGauge(ratio: 0.92, correctLabel: 'R', errorLabel: 'L'),
+            FocusGauge(ratio: 0.45, correctLabel: 'R', errorLabel: 'L'),
+            FocusGauge(ratio: 0.08, correctLabel: 'R', errorLabel: 'L'),
+            MicButton(listening: true, busy: false, level: 0.6, onTap: null),
+          ],
+        ),
+      ),
+    ),
+    'detail_R': () => SoundDetailScreen(sound: soundById('R')),
     'pairs': () => const MinimalPairsScreen(),
     'meter': () => const MeterScreen(),
     'reading': () => ReadingScreen(story: stories.first),
@@ -108,6 +127,7 @@ void main() {
           home: e.value(),
         ),
       );
+      await tester.pump(const Duration(milliseconds: 1200));
       await tester.pump(const Duration(milliseconds: 1200));
       // Ses çalar olay kanalları testte yok; bu hatalar beklenen.
       while (tester.takeException() != null) {}

@@ -54,6 +54,55 @@ class SoundCheck {
   }
 
   static const correctLabel = 'Doğru';
+
+  /// Kişinin kendi hatasına odaklı ikili karşılaştırma: yalnızca "doğru" ile
+  /// [errorLabel] yarıştırılır. 1 = tamamen doğru, 0 = tamamen hata.
+  /// Ölçüm: docs/MODEL_DEGERLENDIRME.md (odaklı mod).
+  FocusResult focus(String errorLabel) {
+    final pc = correctProb;
+    final pe = probs[errorLabel] ?? 0;
+    final ratio = pc + pe <= 0 ? 0.5 : pc / (pc + pe);
+    // Seçilen hata dışında başka bir hata baskınsa bunu ayrıca söyle.
+    final others = probs.entries
+        .where((e) => e.key != correctLabel && e.key != errorLabel)
+        .toList();
+    final otherTop = others.isEmpty
+        ? null
+        : others.reduce((a, b) => a.value >= b.value ? a : b);
+    return FocusResult(
+      ratio: ratio,
+      errorLabel: errorLabel,
+      verdict: ratio < FocusResult.errorBelow
+          ? Verdict.error
+          : ratio >= FocusResult.correctFrom
+          ? Verdict.correct
+          : Verdict.unsure,
+      otherError:
+          otherTop != null && otherTop.value > 0.6 && otherTop.value > pc + pe
+          ? otherTop.key
+          : null,
+    );
+  }
+}
+
+class FocusResult {
+  /// Hata: oran < 0,20. Doğru: oran ≥ 0,70. Arası: "arada".
+  static const errorBelow = 0.2;
+  static const correctFrom = 0.7;
+
+  final double ratio;
+  final String errorLabel;
+  final Verdict verdict;
+
+  /// Seçilen hatadan farklı ve baskın bir hata varsa adı (ör. "R yerine Y").
+  final String? otherError;
+
+  const FocusResult({
+    required this.ratio,
+    required this.errorLabel,
+    required this.verdict,
+    required this.otherError,
+  });
 }
 
 class PronunciationResult {
@@ -161,6 +210,52 @@ class PronunciationScorer {
     't': [('k', 'T yerine K')],
     'd': [('g', 'D yerine G'), ('t', 'D yerine T')],
   };
+
+  /// Hatanın yerine geçen sesin kısa adı (ibre etiketi için): "L", "Y", "θ"…
+  static String errorShort(String label) => switch (label) {
+    'Gırtlaktan R' => 'ʁ',
+    'R yutuldu' => '—',
+    'Dişler arası (peltek) S' => 'θ',
+    'Dişler arası (peltek) Z' => 'ð',
+    'Yanal S' => 'ɬ',
+    'R yerine V/W' => 'V',
+    _ => label.split(' ')[2],
+  };
+
+  /// Kısa seçim etiketi: "L gibi", "Boğazdan", "Peltek"…
+  static String errorChip(String label) => switch (label) {
+    'Gırtlaktan R' => 'Boğazdan',
+    'R yutuldu' => 'Atlıyorum',
+    'Dişler arası (peltek) S' || 'Dişler arası (peltek) Z' => 'Peltek',
+    'Yanal S' => 'Islak / yanal',
+    _ => '${errorShort(label)} gibi',
+  };
+
+  /// Kullanıcıya seçim olarak sunulan, gündelik dille hata adı.
+  static String errorPlain(String label) => switch (label) {
+    'R yerine Y' => 'Y gibi söylüyorum',
+    'R yerine L' => 'L gibi (ya da L ile R arası) söylüyorum',
+    'R yerine D' => 'D gibi söylüyorum',
+    'R yerine V/W' => 'V / W gibi, dudaklarla söylüyorum',
+    'Gırtlaktan R' => 'Boğazdan, “Fransız R’si” gibi söylüyorum',
+    'R yutuldu' => 'Hiç çıkmıyor, atlıyorum',
+    'Dişler arası (peltek) S' => 'Dilim dişlerimin arasından çıkıyor (peltek)',
+    'Dişler arası (peltek) Z' => 'Dilim dişlerimin arasından çıkıyor (peltek)',
+    'Yanal S' => 'Islak, hışırtılı; hava yanlardan kaçıyor',
+    _ => '${label.split(' ')[2]} gibi söylüyorum',
+  };
+
+  /// Örnek kelimede hatanın nasıl duyulduğu: araba → alaba.
+  static String errorExample(String word, String target, String label) {
+    final t = trLower(target);
+    final errs = errors[t] ?? const [];
+    final rep = errs.where((e) => e.$2 == label).map((e) => e.$1).firstOrNull;
+    if (label == 'R yutuldu') return word.replaceFirst(t, '');
+    if (rep == null || rep.length > 1 || !_alphabet.contains(rep)) {
+      return word;
+    }
+    return word.replaceFirst(t, rep);
+  }
 
   /// Her hata için ne yapılması gerektiğini söyleyen kısa yönlendirme.
   static const Map<String, String> tips = {

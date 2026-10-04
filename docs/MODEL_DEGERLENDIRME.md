@@ -103,6 +103,29 @@ Okuma: R yerine Y ve R yerine D söylendiğinde model bunları hiç “doğru”
 saymıyor. R yerine V/W en zayıf nokta; TTS'in ürettiği “v” sesi R'ye yakın
 çıkıyor olabilir, gerçek seste ayrıca ölçülmeli.
 
+### 2b) Odaklı mod: kişinin kendi hatası seçiliyse
+
+Kişi “R’yi L gibi söylüyorum” gibi kendi hatasını seçtiyse yalnızca iki
+hipotez yarıştırılır (doğru ↔ o hata) ve sonuç bir ibrede gösterilir.
+Oran = doğru / (doğru + seçilen hata). Hata: oran < 0,20; doğru: oran ≥ 0,70;
+arası “arada” (ör. R ile L arası bir ses).
+
+| Seçilen hata | Yanlış alarm (gerçek ses) | Yakalama (sentetik) | Kaçırma |
+|---|---|---|---|
+| R yerine L | %1,1 | **%64** (genel mod %59) | %11 |
+| R yerine Y | %0,7 | **%89** (genel mod %70) | %0 |
+| R yerine D | 0 | **%98** | 0 |
+| R yerine V/W | 0 | %50 | %25 |
+| R yutuldu | %1,4 | **%59** (genel mod %20) | %14 |
+| S yerine Ş | 0 | %97 | 0 |
+| S yerine T | 0 | %71 | %13 |
+| K yerine T | %2,3 | %81 | %6 |
+| L yerine Y | %1,9 | %93 | 0 |
+| Ş yerine S | 0 | %96 | 0 |
+
+Kendi hatasını seçmek, özellikle R yutma ve R→Y'de yakalamayı belirgin
+artırıyor; yanlış alarm yaklaşık aynı kalıyor.
+
 ### 3) Uçtan uca (telefondaki Dart kodu)
 
 `integration_test/phoneme_model_test.dart`, gerçek Dart özellik çıkarımı ve

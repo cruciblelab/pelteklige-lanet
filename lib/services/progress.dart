@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../audio/pronunciation_scorer.dart';
+import '../data/minimal_pairs.dart';
 import '../data/sounds.dart';
 import '../models/sound.dart';
 
-enum LevelKind { bridge, practice }
+enum LevelKind { bridge, pairs, practice }
 
 /// Bir sesin çalışma basamağı (hazırlık → hece → kelime → cümle…).
 class Level {
@@ -37,6 +39,7 @@ List<Level> levelsFor(SoundInfo s) {
         kind: LevelKind.bridge,
         items: [for (final b in s.bridge) b.$1],
       ),
+    ?_pairsLevel(s),
     Level(
       id: 'hece',
       title: 'Heceler',
@@ -89,6 +92,24 @@ List<Level> levelsFor(SoundInfo s) {
   ].where((lv) => lv.items.isNotEmpty).toList();
 }
 
+/// Kişinin hatası biliniyorsa "kar mı kal mı?" çiftleri basamağı.
+Level? _pairsLevel(SoundInfo s) {
+  final p = Progress.instance;
+  if (!p.isLoaded) return null;
+  final err = p.focusError(s.id);
+  if (err == null) return null;
+  final short = PronunciationScorer.errorShort(err);
+  final pairs = pairsFor(s.letter, short);
+  if (pairs.isEmpty) return null;
+  return Level(
+    id: 'cift',
+    title: 'Çiftler: ${pairs.first.$1} mı ${pairs.first.$2} mı?',
+    hint: '${s.letter} ile $short arasındaki farkı söyle',
+    kind: LevelKind.pairs,
+    items: [for (final pr in pairs) '${pr.$1}|${pr.$2}'],
+  );
+}
+
 /// Odak sesleri, başlangıç bilgisi ve basamak sonuçları. Hepsi cihazda.
 ///
 /// Bir basamak, ses analizinin son [window] denemesinden en az [needed]
@@ -109,6 +130,8 @@ class Progress extends ChangeNotifier {
 
   SharedPreferences get _prefs => _p!;
 
+  bool get isLoaded => _p != null;
+
   bool get onboarded => _prefs.getBool('onboarded') ?? false;
   set onboarded(bool v) {
     _prefs.setBool('onboarded', v);
@@ -125,6 +148,30 @@ class Progress extends ChangeNotifier {
   set focusSounds(List<String> v) {
     _prefs.setStringList('focusSounds', v);
     notifyListeners();
+  }
+
+  /// Kişinin bu seste yaptığı hata (ör. "R yerine L"). Seçildiyse analiz ve
+  /// alıştırmalar bu ayrıma odaklanır. null = bilinmiyor (tüm hatalara bakılır).
+  String? focusError(String soundId) {
+    final m = _focusErrors;
+    return m[soundId];
+  }
+
+  void setFocusError(String soundId, String? label) {
+    final m = _focusErrors;
+    if (label == null) {
+      m.remove(soundId);
+    } else {
+      m[soundId] = label;
+    }
+    _prefs.setString('focusErrors', jsonEncode(m));
+    notifyListeners();
+  }
+
+  Map<String, String> get _focusErrors {
+    final raw = _prefs.getString('focusErrors');
+    if (raw == null) return {};
+    return (jsonDecode(raw) as Map<String, dynamic>).cast<String, String>();
   }
 
   Map<String, List<bool>> get _results {

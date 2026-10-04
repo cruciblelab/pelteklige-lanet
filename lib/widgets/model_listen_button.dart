@@ -6,19 +6,22 @@ import '../audio/phoneme_model.dart';
 import '../audio/voice_capture.dart';
 import '../services/recordings.dart';
 import '../services/stt.dart';
+import 'focus_gauge.dart';
 
-/// Mikrofona basınca dinler, konuşma bitince kendisi durur ve sesi verir.
-/// Fonem modeli ilk kullanımda yüklenir. Sessizlikte [onSilence] çağrılır.
+/// Büyük mikrofon: dokununca dinler, konuşma bitince kendisi durur ve sesi
+/// [onSpeech] ile verir. Fonem modeli ilk kullanımda yüklenir.
 class ModelListenButton extends StatefulWidget {
   final String label;
   final Future<void> Function(Float32List samples) onSpeech;
   final VoidCallback onSilence;
+  final double size;
 
   const ModelListenButton({
     super.key,
     required this.label,
     required this.onSpeech,
     required this.onSilence,
+    this.size = 96,
   });
 
   @override
@@ -88,24 +91,24 @@ class _ModelListenButtonState extends State<ModelListenButton> {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        FilledButton.icon(
-          onPressed: _busy ? null : _tap,
-          icon: _busy
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(_listening ? Icons.stop : Icons.mic),
-          label: Text(_listening ? 'Dinliyorum…' : widget.label),
+        MicButton(
+          listening: _listening,
+          busy: _busy,
+          level: _level,
+          onTap: _tap,
+          size: widget.size,
         ),
-        if (_listening)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: LinearProgressIndicator(value: _level),
-          ),
+        Text(
+          _listening
+              ? 'Dinliyorum…'
+              : _busy
+              ? 'İnceliyorum…'
+              : widget.label,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       ],
     );
   }
