@@ -1,42 +1,40 @@
 # Yapılacaklar / açık sorunlar
 
-Son güncelleme: 2026-10-03
+Son güncelleme: 2026-10-04
 
-## 1. Konuşunca uygulama çöküyor (ÖNCELİKLİ)
+## 1. Konuşunca uygulama çöküyor — SEBEP BULUNDU, DÜZELTİLDİ (telefonda doğrulanacak)
 
-**Ne oldu:** Mikrofon izni verildi, konuşuldu, uygulama birden kapandı.
+**Ne oldu:** Mikrofon izni verildi, konuşuldu, uygulama kapandı
+(POCO, Android 16, HyperOS 3).
 
-**Henüz bilinmeyenler (öğrenince buraya yaz):**
-- [ ] Hangi APK? (Actions çalıştırma numarası: #1 eski sürüm / #3 ve sonrası ses modelli sürüm)
-- [ ] Hangi ekran ve hangi düğme?
-  - Alıştırma → “Söyle, sesimi incele” (yeni ses modeli)
-  - Alıştırma → mikrofon (kendi kaydın)
-  - Alıştırma/okuma → “Söyle, kontrol edeyim” (Google tanıyıcısı)
-  - Benzer kelimeler → “Söyle”
-  - Tıslama ölçer → “Başlat”
-- [ ] Hemen mi çöktü, yoksa konuşma bitip “İnceliyorum…” yazısından sonra mı?
-- [ ] Her seferinde mi oluyor?
-- [ ] Telefon modeli ve Android sürümü, RAM (ör. 3 GB / 4 GB / 8 GB)
+**Log:**
+```
+JNI DETECTED ERROR IN APPLICATION: java_class == null
+  in call to GetMethodID
+  from boolean[] ai.onnxruntime.OrtSession.run(...)
+  ... convertToTensorInfo ...
+```
 
-**Olası sebepler (kod incelemesine göre, doğrulanmadı):**
-1. **Bellek:** Ses modeli (70 MB) ilk kullanımda belleğe tamamen okunup
-   geçici klasöre yazılıyor (`flutter_onnxruntime` → `createSessionFromAsset`),
-   ardından ONNX Runtime oturumu açılıyor. Kısa sürede ~200 MB'a çıkan bellek
-   kullanımı, düşük RAM'li telefonlarda Android'in uygulamayı öldürmesine yol
-   açabilir. Dışarıdan bu bir çökme gibi görünür.
-   *Çözüm fikri:* Modeli asset'ten parça parça (stream) kalıcı bir klasöre bir
-   kez kopyalamak ve oturumu dosya yolundan açmak.
-2. **Yerel (native) çökme:** ONNX Runtime Android, kayıt eklentisi (`record`,
-   16 kHz akış + `voiceRecognition` kaynağı) ya da Google tanıyıcısı. Bunlar
-   Dart tarafında yakalanamaz.
-3. **Mikrofon çakışması:** Aynı anda iki özelliğin mikrofonu açmaya çalışması.
+**Sebep:** Release derlemesinde Android'in kod küçültücüsü (R8), ONNX
+Runtime'ın Java sınıflarını (`TensorInfo`, `OrtException`, `OnnxSequence`…)
+kullanılmıyor sanıp sildi. Modelin yerel (C++) kodu bu sınıflara isimle
+erişiyor. Sınıf bulunamayınca, model ilk kez çalıştırıldığında (yani
+konuşma bitince) uygulama çöktü. Masaüstü testlerinde görünmedi, çünkü orada
+ne Java ne de R8 var.
 
-**Yapılacak:**
-- [ ] Uygulama içine hata günlüğü ekle (Dart hataları bir dosyaya yazılsın,
-      Ayarlar'dan görülüp kopyalanabilsin), böylece çökme ayrıntısı gelsin
-- [ ] Model yüklemeyi bellek dostu yap (yukarıdaki 1. madde)
-- [ ] Mümkünse `adb logcat` çıktısı al (telefon bilgisayara bağlıyken):
-      `adb logcat -d | grep -iE "flutter|onnx|record|AndroidRuntime|FATAL" > cokme.txt`
+**Düzeltme:**
+- [x] `android/app/proguard-rules.pro`: `ai.onnxruntime.**` korunuyor
+- [x] APK'da sınıfların durduğu doğrulandı (önce `TensorInfo` ve
+      `OrtException` yoktu, şimdi var)
+- [x] CI'a koruma adımı eklendi: bu sınıflar APK'da yoksa derleme kırmızıya düşer
+- [ ] **Telefonda doğrula:** yeni APK'yı kur, “Söyle, sesimi incele”ye bas,
+      konuş. Çökmeden sonuç çıkıyor mu?
+
+**Hâlâ yapılabilecekler (çökme devam ederse):**
+- [ ] Uygulama içine hata günlüğü (Dart hataları dosyaya, Ayarlar'dan kopyalanabilir)
+- [ ] Model yüklemeyi bellek dostu yap: 70 MB'lık asset şu an belleğe tamamen
+      okunup geçici klasöre yazılıyor; düşük RAM'li telefonlarda sorun olabilir
+- [ ] Yeni log: `adb logcat -d | grep -iE "flutter|onnx|AndroidRuntime|FATAL|DEBUG" > cokme.txt`
 
 ## 2. Ses analizini gerçek seste dene
 

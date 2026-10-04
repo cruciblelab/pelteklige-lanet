@@ -84,6 +84,19 @@ jobs:
       - name: APK derle
         run: flutter build apk --release --split-per-abi --build-number ${{ github.run_number }}
 
+      # Model çalışırken yerel kod bu sınıflara isimle erişir; R8 silerse uygulama
+      # çöker (JNI "java_class == null"). Kurallar: android/app/proguard-rules.pro
+      - name: ONNX Runtime JNI sınıfları APK'da mı?
+        run: |
+          APK=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          for c in TensorInfo OnnxTensor OnnxSequence OnnxMap OrtException OrtSession OrtUtil; do
+            if ! unzip -p "$APK" 'classes*.dex' | strings | grep -q "Lai/onnxruntime/$c;"; then
+              echo "::error::ai.onnxruntime.$c APK'dan silinmiş; uygulama model çalışırken çöker."
+              exit 1
+            fi
+          done
+          echo "Tüm ONNX Runtime JNI sınıfları yerinde."
+
       - name: APK'ları adlandır
         id: name
         run: |

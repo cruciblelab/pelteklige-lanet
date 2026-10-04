@@ -52,6 +52,11 @@ android {
 
     buildTypes {
         release {
+            // ONNX Runtime JNI sınıfları küçültmede korunmalı (bkz. proguard-rules.pro)
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
