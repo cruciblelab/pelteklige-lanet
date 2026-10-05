@@ -23,13 +23,13 @@ yutma gibi **artikülasyon** sorunları için Türkçe bir Android alıştırma 
 | **Günlük hedef** | Günlük deneme sayısı hedefi (varsayılan 100); araştırmalarda tekrar sayısı belirleyici. |
 | **Kendi hatana odaklı** | Hatanı seçince analiz yalnızca o ayrıma bakar ve sonucu bir **R ←●→ L ibresiyle** gösterir (“R ile L arasında” dahil). Alıştırmalara “kar mı kal mı?” çiftleri eklenir. |
 | **R’ye özel** | “D’den R’ye köprü” hazırlığı (ada → ara, R ↔ D ibresi), R kümeleri (tren, kral…), R→Y/L/D/V-W/gırtlak/yutma ayrımı ve her hata için ne yapılacağını söyleyen yönlendirme. |
-| **Animasyon** | Ağzın yan kesiti: dil, damak, küçük dil, dişler, dudaklar; R’de dil ucunun diş etine tek vuruşu ve temas dalgası, L’de yapışık dil ve yanlardan akan hava, D/T’de kapanma–basınç–patlama. “Doğrusu / Senin / Üst üste” karşılaştırması, adım adım alt yazı, yavaş çekim. |
+| **Animasyon** | İki görünüm. **Yandan kesit:** burun boşluğu ve kıvrımları, sert damak kemiği ve damak kıvrımları, yumuşak damak ve küçük dil, kökleriyle kesici dişler ve diş etleri, dudaklar (kırmızı kısım ve halka kas), çene kemiği, dil kemiği, gırtlak kapağı, ses telleri, boyun omurları; dilde kas lifleri ve dil altı bağı. **Önden (ayna):** dudaklar, dişler, kalkan dil ucunun alt yüzü (damarlar, bağ), havanın çıktığı yer. R’de dil ucunun diş etine tek vuruşu, L’de yapışık dil ve yanlardan akan hava, D/T’de kapanma–basınç–patlama. “Doğrusu / Senin / Üst üste” karşılaştırması, adım adım alt yazı, yavaş çekim, adlar açılıp kapanır. |
 | **Sesler** | R, L, S, Z, Ş, Ç, C, K, G, T, D için ağzın yandan kesit **animasyonu** (dil, dişler, dudaklar, hava akışı, ses telleri titreşimi), adım adım söyleyiş, ısınma hareketleri, sık hatalar. S/Z/R/K/G için “doğrusu / sık hata” karşılaştırması (ör. dişler arası peltek S). |
 | **Alıştırmalar** | Hece → kelime başı → ortası → sonu → cümle → tekerleme. Her öğede: örneği dinle (normal/yavaş), **kendi sesini kaydet ve dinle**, kendini değerlendir, istersen telefona kontrol ettir. |
 | **Kitap okuma** | Özgün kısa hikâyeler + kendi metnini yapıştırma. Üç mod: *Oku* (cümleye dokununca okunuşunu dinle), *Kaydet* (tüm okumayı kaydet), *Takip* (cümle cümle oku; atlanan kelimeler, kısaltılan kelimeler ve “r → y” gibi harf farkları gösterilir). |
 | **Benzer kelimeler** | Minimal çiftler (kar/kay, su/şu, kaş/taş…). *Duy ve seç*: kulak eğitimi. *Söyle*: tanıyıcı iki kelimeden hangisini duyduğunu söyler. |
 | **Tıslama ölçer** | Mikrofondan canlı spektrum analizi (FFT). S ve Ş seslerinin “tizliğini” ibre ve zaman grafiği olarak gösterir; hedef bölgede kalma süresini sayar. |
-| **Kayıtlarım** | Tüm kayıtlar telefonda saklanır; eski ve yeni kaydı art arda dinleyip ilerlemeyi duyabilirsin. |
+| **Kayıtlarım** | Tüm kayıtlar telefonda saklanır; eski ve yeni kaydı art arda dinleyip ilerlemeyi duyabilirsin. İstersen **Paylaş** ile kayıtları (adında kelime ve analiz sonucu, yanında özet tablo) kendin gönderebilirsin; uygulama kendisi hiçbir yere göndermez. |
 
 ## “Telefon konuşmayı nasıl değerlendiriyor?” — dürüst cevap
 
@@ -117,7 +117,7 @@ lib/
   utils/turkish.dart             Türkçe küçük harf / normalizasyon (I/ı, İ/i)
   data/                          sesler, minimal çiftler, hikâyeler (içerik burada)
   services/                      kayıt, konuşma tanıma, metin okuma, ayarlar
-  widgets/mouth_animation.dart   ağız kesiti animasyonu
+  widgets/articulation/          ağız animasyonu: yan kesit, önden görünüm, hareket zamanlaması
   screens/                       ekranlar
 ```
 

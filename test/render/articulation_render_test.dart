@@ -27,18 +27,24 @@ Future<void> _fonts() async {
 
 void main() {
   setUpAll(_fonts);
-  final cases = <String, (String, String?, bool)>{
-    'r_vs_l': ('r', 'l', false),
-    'r_only': ('r', null, false),
-    'l_error': ('r', 'l', true),
-    's_vs_th': ('s', 'θ', false),
-    'k': ('k', null, false),
-    'r_vs_y': ('r', 'y', false),
+  // (doğru, hata, hatayı göster, önden)
+  final cases = <String, (String, String?, bool, bool)>{
+    'r_vs_l': ('r', 'l', false, false),
+    'r_only': ('r', null, false, false),
+    'l_error': ('r', 'l', true, false),
+    's_vs_th': ('s', 'θ', false, false),
+    'k': ('k', null, false, false),
+    'r_vs_y': ('r', 'y', false, false),
+    'n': ('n', null, false, false),
+    'front_r_vs_l': ('r', 'l', false, true),
+    'front_l_error': ('r', 'l', true, true),
+    'front_s_vs_th': ('s', 'θ', false, true),
+    'front_sh_v': ('ş', 'v', false, true),
   };
   for (final e in cases.entries) {
     testWidgets('kareler ${e.key}', (tester) async {
       await tester.binding.setSurfaceSize(const Size(900, 680));
-      final (c, err, showErr) = e.value;
+      final (c, err, showErr, front) = e.value;
       await tester.pumpWidget(
         MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -54,6 +60,7 @@ void main() {
                       t: t,
                       labels: t == 0.43,
                       showError: showErr,
+                      front: front,
                     ),
                   ),
               ],
