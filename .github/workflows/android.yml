@@ -1,0 +1,134 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main, master, "claude/**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write # v* etiketinde GitHub Release oluşturmak için
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.6"
+
+jobs:
+  build:
+    name: Test ve APK derle
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Fonem modeli önbelleği
+        uses: actions/cache@v4
+        with:
+          path: assets/models/zipa-small-crctc-500k.int8.onnx
+          key: zipa-small-crctc-500k-${{ hashFiles('tool/fetch_model.sh') }}
+
+      - name: Fonem modelini indir ve doğrula (SHA-256)
+        run: ./tool/fetch_model.sh
+
+      - name: Bağımlılıklar
+        run: flutter pub get
+
+      - name: Statik analiz
+        run: flutter analyze
+
+      - name: Testler
+        run: flutter test --exclude-tags render
+
+      # Kalıcı imza: depo ayarlarında şu gizli değişkenler tanımlıysa kullanılır
+      #   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+      #   ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+      # Tanımlı değilse APK debug anahtarıyla imzalanır (README'ye bak).
+      - name: İmza anahtarı
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+            cat > android/key.properties <<PROPS
+          storeFile=release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          PROPS
+            echo "Kalıcı anahtarla imzalanacak."
+          else
+            echo "::warning::İmza anahtarı tanımlı değil, debug anahtarı kullanılıyor. Yeni APK eskisinin üstüne kurulamayabilir."
+          fi
+
+      # İşlemci mimarisine göre ayrı APK: ONNX Runtime her mimari için ayrı
+      # kütüphane getirdiğinden tek (universal) APK ~165 MB olur.
+      - name: APK derle
+        run: flutter build apk --release --split-per-abi --build-number ${{ github.run_number }}
+
+      # Model çalışırken yerel kod bu sınıflara isimle erişir; R8 silerse uygulama
+      # çöker (JNI "java_class == null"). Kurallar: android/app/proguard-rules.pro
+      - name: ONNX Runtime JNI sınıfları APK'da mı?
+        run: |
+          APK=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          for c in TensorInfo OnnxTensor OnnxSequence OnnxMap OrtException OrtSession OrtUtil; do
+            if ! unzip -p "$APK" 'classes*.dex' | strings | grep -q "Lai/onnxruntime/$c;"; then
+              echo "::error::ai.onnxruntime.$c APK'dan silinmiş; uygulama model çalışırken çöker."
+              exit 1
+            fi
+          done
+          echo "Tüm ONNX Runtime JNI sınıfları yerinde."
+
+      - name: APK'ları adlandır
+        id: name
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          BASE="peltek-${VERSION}-${{ github.run_number }}"
+          OUT=build/app/outputs/flutter-apk
+          cp "$OUT/app-arm64-v8a-release.apk" "$BASE-arm64.apk"
+          cp "$OUT/app-armeabi-v7a-release.apk" "$BASE-armv7.apk"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          {
+            echo "### APK hazır"
+            echo "- \`$BASE-arm64.apk\` ($(du -h "$BASE-arm64.apk" | cut -f1)) — 2017 sonrası telefonların neredeyse hepsi"
+            echo "- \`$BASE-armv7.apk\` ($(du -h "$BASE-armv7.apk" | cut -f1)) — eski 32 bit telefonlar"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-arm64
+          path: ${{ steps.name.outputs.base }}-arm64.apk
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-armv7
+          path: ${{ steps.name.outputs.base }}-armv7.apk
+          retention-days: 30
+
+      - name: GitHub Release (yalnızca v* etiketlerinde)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.name.outputs.base }}-arm64.apk
+            ${{ steps.name.outputs.base }}-armv7.apk
+          generate_release_notes: true
