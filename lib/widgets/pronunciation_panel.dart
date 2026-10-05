@@ -78,7 +78,7 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
       final _Shown s;
       if (widget.focusError != null && c.probs.containsKey(widget.focusError)) {
         final f = c.focus(widget.focusError!);
-        s = _Shown(f.ratio, widget.focusError!, f.verdict, c, f.otherError);
+        s = _Shown(f.ratio, f.shownLabel, f.verdict, c, f.otherError);
       } else {
         final top = c.topError;
         final pc = c.correctProb;
@@ -338,7 +338,9 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
             ),
           if (s.otherError != null)
             Text(
-              'Bu sefer daha çok “${PronunciationScorer.errorShort(s.otherError!)}” gibi duyuldu.',
+              'Seçili hatan “${PronunciationScorer.errorChip(widget.focusError ?? '')}”, '
+              'ama bu sefer “${PronunciationScorer.errorChip(s.otherError!)}” duyuldu. '
+              'Sık oluyorsa ses sayfasından hatanı değiştir.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),

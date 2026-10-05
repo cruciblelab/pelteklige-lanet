@@ -23,6 +23,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   List<SoundInfo> _ask = [];
   int _askIndex = 0;
 
+  /// Kısa testten gelen öneriler: ses → testte en olası görünen hata.
+  Map<String, String> _hints = {};
+
+  void _afterScreening(List<String> focus, Map<String, String> hints) {
+    Navigator.of(context).pop();
+    setState(() {
+      _selected
+        ..clear()
+        ..addAll(focus);
+      _hints = hints;
+    });
+    _startAsking();
+  }
+
   void _startAsking() {
     final chosen = sounds.where((s) => _selected.contains(s.id)).toList();
     final ask = chosen
@@ -196,7 +210,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               soundIds: _selected.isEmpty
                   ? sounds.map((s) => s.id).toList()
                   : sounds.map((s) => s.id).where(_selected.contains).toList(),
-              onDone: _finish,
+              onDone: _afterScreening,
             ),
           ),
         ),
@@ -214,7 +228,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             MaterialPageRoute(
               builder: (_) => ScreeningScreen(
                 soundIds: sounds.map((s) => s.id).toList(),
-                onDone: _finish,
+                onDone: _afterScreening,
               ),
             ),
           ),
@@ -230,6 +244,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final example = snd.wordsMiddle.isNotEmpty
         ? snd.wordsMiddle.first
         : snd.wordsStart.first;
+    final hint = _hints[snd.id];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -255,12 +270,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           'Seçtiğin farka odaklanacağız. Emin değilsen “Bilmiyorum” de.',
           style: theme.textTheme.bodyMedium,
         ),
+        if (hint != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Kısa testte en çok “${PronunciationScorer.errorChip(hint)}” '
+            'duyuldu. Bu yalnızca bir tahmin; kendi bildiğin farklıysa onu seç.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         Expanded(
           child: ListView(
             children: [
               for (final e in errs)
                 Card(
+                  color: e.$2 == hint
+                      ? theme.colorScheme.primaryContainer
+                      : null,
                   child: ListTile(
                     leading: CircleAvatar(
                       child: Text(

@@ -55,20 +55,27 @@ class SoundCheck {
 
   static const correctLabel = 'Doğru';
 
-  /// Kişinin kendi hatasına odaklı ikili karşılaştırma: yalnızca "doğru" ile
-  /// [errorLabel] yarıştırılır. 1 = tamamen doğru, 0 = tamamen hata.
+  /// Kişinin kendi hatasına odaklı karşılaştırma. 1 = tamamen doğru,
+  /// 0 = tamamen hata.
+  ///
+  /// Normalde yalnızca "doğru" ile [errorLabel] yarıştırılır. Ama başka bir
+  /// hata doğrudan daha olasıysa (ör. odak "R yerine D" iken açıkça L
+  /// söylendiyse) o hata da hesaba katılır ve sonuç onun adıyla gösterilir.
+  /// Bu olmadan yanlış seçilmiş bir odak, açık bir L'yi "%60 R" gösteriyordu.
   /// Ölçüm: docs/MODEL_DEGERLENDIRME.md (odaklı mod).
   FocusResult focus(String errorLabel) {
     final pc = correctProb;
     final pe = probs[errorLabel] ?? 0;
-    final ratio = pc + pe <= 0 ? 0.5 : pc / (pc + pe);
-    // Seçilen hata dışında başka bir hata baskınsa bunu ayrıca söyle.
     final others = probs.entries
         .where((e) => e.key != correctLabel && e.key != errorLabel)
         .toList();
     final otherTop = others.isEmpty
         ? null
         : others.reduce((a, b) => a.value >= b.value ? a : b);
+    final po = otherTop != null && otherTop.value > pc ? otherTop.value : 0.0;
+    final denom = pc + pe + po;
+    final ratio = denom <= 0 ? 0.5 : pc / denom;
+    final dominant = po > pe ? otherTop!.key : null;
     return FocusResult(
       ratio: ratio,
       errorLabel: errorLabel,
@@ -77,10 +84,7 @@ class SoundCheck {
           : ratio >= FocusResult.correctFrom
           ? Verdict.correct
           : Verdict.unsure,
-      otherError:
-          otherTop != null && otherTop.value > 0.6 && otherTop.value > pc + pe
-          ? otherTop.key
-          : null,
+      otherError: dominant,
     );
   }
 }
@@ -102,8 +106,11 @@ class FocusResult {
   final String errorLabel;
   final Verdict verdict;
 
-  /// Seçilen hatadan farklı ve baskın bir hata varsa adı (ör. "R yerine Y").
+  /// Seçilen hatadan daha olası bir hata varsa adı (ör. "R yerine Y").
   final String? otherError;
+
+  /// İbrenin karşı ucunda gösterilecek hata.
+  String get shownLabel => otherError ?? errorLabel;
 
   const FocusResult({
     required this.ratio,
@@ -164,11 +171,12 @@ class PronunciationScorer {
     'h': ['h', 'ħ', 'x', 'ɦ'],
     'j': ['ʒ', 'ʑ'],
     'k': ['k', 'c', 'q'],
-    'l': ['l', 'ɭ', 'ʎ', 'ɮ'],
+    // ɺ (yanal vuruş) tam olarak "R ile L arası" sestir: L tarafında sayılır.
+    'l': ['l', 'ɭ', 'ʎ', 'ɮ', 'ɺ', 'ʟ'],
     'm': ['m', 'ɱ'],
     'n': ['n', 'ŋ', 'ɲ', 'ɳ'],
     'p': ['p'],
-    'r': ['r', 'ɾ', 'ɹ', 'ɺ', 'ɽ', 'ɻ'],
+    'r': ['r', 'ɾ', 'ɹ', 'ɽ', 'ɻ'],
     's': ['s'],
     'ş': ['ʃ', 'ɕ', 'ʂ'],
     't': ['t', 'ʈ'],

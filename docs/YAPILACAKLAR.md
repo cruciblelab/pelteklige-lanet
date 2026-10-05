@@ -2,7 +2,7 @@
 
 Son güncelleme: 2026-10-05
 
-## 1. Konuşunca uygulama çöküyor — SEBEP BULUNDU, DÜZELTİLDİ (telefonda doğrulanacak)
+## 1. Konuşunca uygulama çöküyor — DÜZELTİLDİ, telefonda doğrulandı
 
 **Ne oldu:** Mikrofon izni verildi, konuşuldu, uygulama kapandı
 (POCO, Android 16, HyperOS 3).
@@ -27,8 +27,7 @@ ne Java ne de R8 var.
 - [x] APK'da sınıfların durduğu doğrulandı (önce `TensorInfo` ve
       `OrtException` yoktu, şimdi var)
 - [x] CI'a koruma adımı eklendi: bu sınıflar APK'da yoksa derleme kırmızıya düşer
-- [ ] **Telefonda doğrula:** yeni APK'yı kur, “Söyle, sesimi incele”ye bas,
-      konuş. Çökmeden sonuç çıkıyor mu?
+- [x] **Telefonda doğrulandı** (run #13): çökme yok.
 
 **Hâlâ yapılabilecekler (çökme devam ederse):**
 - [ ] Uygulama içine hata günlüğü (Dart hataları dosyaya, Ayarlar'dan kopyalanabilir)
@@ -57,6 +56,20 @@ Model şimdiye kadar yalnızca yetişkin sesi ve TTS ile ölçüldü. Çökme
       **“Duyulan sesler: /…/”** satırı
 - [ ] Mümkünse aynı kelimeyi bir de bilerek doğru (ya da birine doğru
       söyleterek) dene. Karşılaştırma, eşikleri ayarlamak için gerekli.
+
+## 2b. İlk telefon denemesinin sonuçları (2026-10-05)
+
+- [x] Kısa test, bilerek söylenen L'yi “D / V gibi” buldu ve hatayı kendisi
+      kaydetti; ibre R'yi D ile kıyasladı, “ala” %60 R çıktı. **Düzeltildi:**
+      test artık yalnızca öneriyor, başka bir hata daha olasıysa ibre onu
+      gösteriyor (docs/MODEL_DEGERLENDIRME.md → “Düzeltme”).
+- [ ] Telefonda: Sesler → R → “Senin söyleyişin” = **L gibi** seç (eski
+      kayıtlı odak D/V olabilir), sonra “ala / ara / ela” yeniden dene.
+- [ ] “Ara” (biraz bozuk) %96 doğru çıktı. Model R–L karışımını gerçekten
+      duyamıyor olabilir. Bunu anlamak için gerçek kayıtlar gerekiyor:
+      Kayıtlarım → Paylaş ile bilerek L, bilerek en iyi R ve normal
+      söyleyişler gönderilirse eşikler senin sesine göre ayarlanabilir.
+- [ ] Animasyon: “ağız içi ve dudak dışı ayrıntılar zayıf”, yeniden çizim.
 
 ## 3. Bilinen zayıf noktalar (ölçümle görüldü)
 

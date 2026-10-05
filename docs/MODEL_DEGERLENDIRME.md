@@ -126,6 +126,34 @@ arası “arada” (ör. R ile L arası bir ses).
 Kendi hatasını seçmek, özellikle R yutma ve R→Y'de yakalamayı belirgin
 artırıyor; yanlış alarm yaklaşık aynı kalıyor.
 
+#### Düzeltme (2026-10-05): odak yanlış seçildiğinde
+
+İlk telefon denemesinde kısa test, bilerek L söylenen kelimeleri “D / V
+gibi” buldu ve bunu kişinin hatası olarak kendisi kaydetti. Sonra
+alıştırmada ibre R'yi L ile değil D ile kıyasladı; bilerek söylenen “ala”
+**%60 R** gösterdi. Bu durum ölçümde de tekrarlandı. Odak “R yerine D”
+iken gerçekte L söylendiğinde eski oran **%36 “doğru”** dedi.
+
+Yeni oran: doğru / (doğru + seçilen hata + *doğrudan daha olası başka hata*).
+Başka bir hata doğrudan daha olası değilse sonuç eskisiyle aynıdır.
+Daha olasıysa onun adıyla gösterilir (“bu sefer L gibi duyuldu”).
+
+| Durum (sentetik R, n=44) | Eski oran | Yeni oran |
+|---|---|---|
+| Odak L, söylenen L → hata | %63 | **%88** |
+| Odak D, söylenen L → hata | %15 (“doğru” %36) | **%88** (“doğru” %6) |
+| Odak L, söylenen doğru R → doğru | %72 | %72 |
+| FLEURS gerçek doğru R: “hata” deme | %1,1 | %3,2 |
+
+Bedeli: gerçek konuşmada yanlış alarm %1,1'den %3,2'ye çıktı. Bunlar
+akıcı cümle içinde R'nin gerçekten zayıfladığı yerler (“üzerlerinden”,
+“-abiliriz”, “kadar herkes”). Tek kelimelik alıştırmada daha az beklenir.
+
+Ayrıca kısa test artık hatayı kendisi kaydetmiyor. Bulduğunu yalnızca
+öneri olarak gösteriyor, son seçimi kişi yapıyor. [ɺ] (yanal vuruş, tam
+olarak “R ile L arası” ses) R sınıfından L sınıfına taşındı. Ölçülen
+etkisi sıfır, model bu sembolü nadiren üretiyor.
+
 ### 3) Uçtan uca (telefondaki Dart kodu)
 
 `integration_test/phoneme_model_test.dart`, gerçek Dart özellik çıkarımı ve

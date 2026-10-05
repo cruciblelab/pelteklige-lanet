@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../services/recordings.dart';
 
@@ -80,13 +81,55 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
       '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year} '
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
+  Future<void> _share(List<RecordingEntry> entries) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${entries.length} kaydı paylaş'),
+        content: const Text(
+          'Kayıtlar senin sesin. Telefonun paylaşma menüsü açılır; nereye ve '
+          'kime göndereceğine sen karar verirsin. Uygulama hiçbir yere kendisi '
+          'göndermez.\n\nDosya adlarında kelime ve ses analizinin sonucu '
+          'yazar (ör. 003_R-ara_L-%60.wav), yanında bir özet tablosu gider.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Paylaş'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final files = await _store.exportCopies(entries);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [for (final f in files) XFile(f)],
+        subject: 'Peltek kayıtları',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final shown = _filter == 'hepsi'
         ? _items
         : _items.where((e) => e.category == _filter).toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Kayıtlarım')),
+      appBar: AppBar(
+        title: const Text('Kayıtlarım'),
+        actions: [
+          IconButton(
+            tooltip: 'Paylaş',
+            onPressed: shown.isEmpty ? null : () => _share(shown),
+            icon: const Icon(Icons.ios_share),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(

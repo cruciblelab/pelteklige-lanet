@@ -69,7 +69,8 @@ class RecordingEntry {
   );
 }
 
-/// Kayıtları cihazda saklar. Hiçbir ses dosyası cihaz dışına gönderilmez.
+/// Kayıtları cihazda saklar. Kişi kendisi paylaşmadıkça hiçbir ses dosyası
+/// cihaz dışına çıkmaz.
 class RecordingStore {
   RecordingStore._();
   static final instance = RecordingStore._();
@@ -223,6 +224,49 @@ class RecordingStore {
     await _deleteFile(e.path);
     (await list()).removeWhere((x) => x.path == e.path);
     await _save();
+  }
+
+  /// Paylaşmak için kayıtların okunaklı adlı kopyalarını ve bir özet
+  /// tablosunu geçici klasöre yazar; dosya yollarını döndürür.
+  /// Ad örneği: `003_R-ara_L-%60.wav` (ses analizi yapıldıysa sonuç adda).
+  Future<List<String>> exportCopies(List<RecordingEntry> entries) async {
+    final out = Directory(
+      '${(await getTemporaryDirectory()).path}/peltek_kayitlar',
+    );
+    if (out.existsSync()) out.deleteSync(recursive: true);
+    out.createSync(recursive: true);
+    String clean(String x) => x
+        .replaceAll(RegExp(r'[^0-9A-Za-zçğıöşüÇĞİÖŞÜ]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    final csv = StringBuffer(
+      'dosya;etiket;tarih;sure_ms;ses;karsilastirilan_hata;oran\n',
+    );
+    final paths = <String>[];
+    for (var i = 0; i < entries.length; i++) {
+      final e = entries[i];
+      final src = File(e.path);
+      if (!src.existsSync()) continue;
+      final ext = e.path.split('.').last;
+      final result = e.ratio == null || e.errorLabel == null
+          ? ''
+          : '_${clean(e.errorLabel!.split(' ').last)}-%${(e.ratio! * 100).round()}';
+      final name =
+          '${(i + 1).toString().padLeft(3, '0')}_${clean(e.label)}$result.$ext';
+      paths.add(src.copySync('${out.path}/$name').path);
+      csv.writeln(
+        [
+          name,
+          e.label,
+          e.createdAt.toIso8601String(),
+          e.durationMs,
+          e.soundId ?? '',
+          e.errorLabel ?? '',
+          e.ratio?.toStringAsFixed(3) ?? '',
+        ].join(';'),
+      );
+    }
+    final index = File('${out.path}/kayitlar.csv')..writeAsStringSync('$csv');
+    return [index.path, ...paths];
   }
 
   Future<void> _deleteFile(String path) async {

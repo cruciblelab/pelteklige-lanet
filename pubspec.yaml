@@ -42,6 +42,7 @@ dependencies:
   fftea: ^1.5.0+1
   shared_preferences: ^2.5.5
   flutter_onnxruntime: ^1.8.5
+  share_plus: ^13.3.1
 
 dev_dependencies:
   flutter_test:

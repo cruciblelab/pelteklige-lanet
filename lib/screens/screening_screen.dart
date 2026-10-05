@@ -6,14 +6,19 @@ import '../audio/phoneme_model.dart';
 import '../audio/pronunciation_scorer.dart';
 import '../data/sounds.dart';
 import '../models/sound.dart';
-import '../services/progress.dart';
 import '../widgets/model_listen_button.dart';
 
 /// Kısa tarama: her ses için iki kelime söylenir, ses analizi hangi seslerde
 /// zorlanıldığını bulur. Sonunda odak sesleri önerilir.
+///
+/// Testin bulduğu hata türü kendiliğinden kaydedilmez: yalnızca bir öneri
+/// olarak [onDone]'a verilir, son kararı kişi verir. İki kelimelik bir test
+/// hata türünü (L mi D mi) güvenilir biçimde ayıramaz.
 class ScreeningScreen extends StatefulWidget {
   final List<String> soundIds;
-  final void Function(List<String> focus) onDone;
+
+  /// [focus]: seçilen sesler. [hints]: ses → testte en olası görünen hata.
+  final void Function(List<String> focus, Map<String, String> hints) onDone;
 
   const ScreeningScreen({
     super.key,
@@ -38,8 +43,9 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
   ];
   int _index = 0;
   final Map<String, List<Verdict>> _results = {};
-  final Map<String, String> _errors = {};
-  final Map<String, Map<String, int>> _errorCounts = {};
+
+  /// Ses → hata → denemeler boyunca toplanan olasılık.
+  final Map<String, Map<String, double>> _errorMass = {};
   String? _note;
   bool _done = false;
   final Set<String> _chosen = {};
@@ -70,13 +76,14 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
         : r.checks.every((c) => c.verdict == Verdict.correct)
         ? Verdict.correct
         : Verdict.unsure;
-    if (v != Verdict.correct) {
-      final label = r.checks.first.topError.key;
-      final counts = _errorCounts.putIfAbsent(_cur.sound.id, () => {});
-      counts[label] = (counts[label] ?? 0) + 1;
-      _errors[_cur.sound.id] = counts.entries
-          .reduce((a, b) => a.value >= b.value ? a : b)
-          .key;
+    // Tek bir "en olası hata" yerine olasılıkları topla: L ile D arasında
+    // kararsız kalan iki deneme, tek tek bakınca yanlış hatayı seçtirebilir.
+    final mass = _errorMass.putIfAbsent(_cur.sound.id, () => {});
+    for (final c in r.checks) {
+      for (final e in c.probs.entries) {
+        if (e.key == SoundCheck.correctLabel) continue;
+        mass[e.key] = (mass[e.key] ?? 0) + e.value;
+      }
     }
     _results.putIfAbsent(_cur.sound.id, () => []).add(v);
     _next();
@@ -107,6 +114,16 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
       }
       _note = null;
     });
+  }
+
+  /// Testte en olası görünen hata ve payı (hatalar arasında).
+  (String, double)? _hint(String id) {
+    final m = _errorMass[id];
+    if (m == null || m.isEmpty) return null;
+    final total = m.values.fold(0.0, (a, b) => a + b);
+    if (total <= 0) return null;
+    final top = m.entries.reduce((a, b) => a.value >= b.value ? a : b);
+    return (top.key, top.value / total);
   }
 
   /// Hata ya da belirsizlik olan sesler, hatalılar önce.
@@ -219,7 +236,13 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
                     _results[id] == null
                         ? 'Test edilmedi'
                         : flagged.contains(id)
-                        ? (_errors[id] ?? 'Net değil')
+                        ? switch (_hint(id)) {
+                            (final l, final share) =>
+                              'En çok “${PronunciationScorer.errorChip(l)}” '
+                                  'duyuldu (%${(share * 100).round()}). '
+                                  'Bir sonraki adımda sen seçeceksin.',
+                            null => 'Net değil',
+                          }
                         : 'İyi görünüyor',
                   ),
                   secondary: Icon(
@@ -247,17 +270,14 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
           onPressed: _chosen.isEmpty
               ? null
-              : () {
-                  // Testte duyulan hata, o sesin odak hatası olur.
-                  for (final id in _chosen) {
-                    final e = _errors[id];
-                    if (e != null) Progress.instance.setFocusError(id, e);
-                  }
-                  widget.onDone(
-                    widget.soundIds.where(_chosen.contains).toList(),
-                  );
-                },
-          child: const Text('Planı başlat'),
+              : () => widget.onDone(
+                  widget.soundIds.where(_chosen.contains).toList(),
+                  {
+                    for (final id in _chosen)
+                      if (_hint(id) case (final l, _)) id: l,
+                  },
+                ),
+          child: const Text('Devam'),
         ),
       ],
     );

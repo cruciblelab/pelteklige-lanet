@@ -117,6 +117,13 @@ void main() {
     expect(c(0.4, 0.5, 0.1).focus('R yerine L').verdict, Verdict.unsure);
     // Seçilen hata dışında Y baskınsa ayrıca bildirilir
     expect(c(0.05, 0.05, 0.9).focus('R yerine L').otherError, 'R yerine Y');
+    // Odak yanlış seçilmişse (Y), açık bir L yine de hata sayılır ve L
+    // olarak gösterilir. Eskiden bu durum "%50 R" gibi görünüyordu.
+    final wrongFocus = c(0.06, 0.9, 0.04).focus('R yerine Y');
+    expect(wrongFocus.verdict, Verdict.error);
+    expect(wrongFocus.shownLabel, 'R yerine L');
+    // Diğer hata doğrudan daha olası değilse hesaba girmez
+    expect(c(0.8, 0.05, 0.15).focus('R yerine L').otherError, isNull);
   });
 
   test('hata örnekleri', () {
