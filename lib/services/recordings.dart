@@ -14,13 +14,37 @@ class RecordingEntry {
   final DateTime createdAt;
   final int durationMs;
 
+  /// Ses analizi yapıldıysa: hangi ses, hangi hatayla karşılaştırıldı ve
+  /// oran (1 = doğru, 0 = hata). "Kendi sesin: R mi L mi?" bunları kullanır.
+  final String? soundId;
+  final String? errorLabel;
+  final double? ratio;
+
   const RecordingEntry({
     required this.path,
     required this.label,
     required this.category,
     required this.createdAt,
     required this.durationMs,
+    this.soundId,
+    this.errorLabel,
+    this.ratio,
   });
+
+  RecordingEntry annotated({
+    required String soundId,
+    required String errorLabel,
+    required double ratio,
+  }) => RecordingEntry(
+    path: path,
+    label: label,
+    category: category,
+    createdAt: createdAt,
+    durationMs: durationMs,
+    soundId: soundId,
+    errorLabel: errorLabel,
+    ratio: ratio,
+  );
 
   Map<String, dynamic> toJson() => {
     'path': path,
@@ -28,6 +52,9 @@ class RecordingEntry {
     'category': category,
     'createdAt': createdAt.toIso8601String(),
     'durationMs': durationMs,
+    'soundId': ?soundId,
+    'errorLabel': ?errorLabel,
+    'ratio': ?ratio,
   };
 
   factory RecordingEntry.fromJson(Map<String, dynamic> j) => RecordingEntry(
@@ -36,6 +63,9 @@ class RecordingEntry {
     category: j['category'] as String,
     createdAt: DateTime.parse(j['createdAt'] as String),
     durationMs: (j['durationMs'] as num?)?.toInt() ?? 0,
+    soundId: j['soundId'] as String?,
+    errorLabel: j['errorLabel'] as String?,
+    ratio: (j['ratio'] as num?)?.toDouble(),
   );
 }
 
@@ -165,6 +195,27 @@ class RecordingStore {
     (await list()).insert(0, entry);
     await _save();
     return entry;
+  }
+
+  /// Kayda ses analizi sonucunu ekler.
+  Future<RecordingEntry> annotate(
+    RecordingEntry e, {
+    required String soundId,
+    required String errorLabel,
+    required double ratio,
+  }) async {
+    final list = await this.list();
+    final i = list.indexWhere((x) => x.path == e.path);
+    final updated = e.annotated(
+      soundId: soundId,
+      errorLabel: errorLabel,
+      ratio: ratio,
+    );
+    if (i >= 0) {
+      list[i] = updated;
+      await _save();
+    }
+    return updated;
   }
 
   Future<void> delete(RecordingEntry e) async {

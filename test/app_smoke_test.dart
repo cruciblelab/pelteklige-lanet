@@ -8,6 +8,7 @@ import 'package:pelteklige_lanet/main.dart';
 import 'package:pelteklige_lanet/screens/sound_detail_screen.dart';
 import 'package:pelteklige_lanet/services/progress.dart';
 import 'package:pelteklige_lanet/services/settings.dart';
+import 'package:pelteklige_lanet/utils/turkish.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -92,7 +93,9 @@ void main() {
     final pairs = levels.firstWhere((l) => l.id == 'cift');
     expect(pairs.items, contains('kar|kal'));
     expect(pairs.items, isNot(contains('kar|kay')));
-    expect(levels.indexWhere((l) => l.id == 'cift'), 1); // köprüden hemen sonra
+    // Kulak → köprü → çiftler
+    expect(levels.take(3).map((l) => l.id), ['kulak', 'kopru', 'cift']);
+    expect(levels.first.title, 'Kulak: kar mı kal mı?');
     p.setFocusError('R', null);
   });
 
@@ -123,5 +126,23 @@ void main() {
     );
     expect(PronunciationScorer.errorExample('araba', 'R', 'R yutuldu'), 'aaba');
     expect(PronunciationScorer.errorShort('R yerine V/W'), 'V');
+  });
+
+  test('soru eki ünlü uyumuna uyar', () {
+    expect(pairQuestion('kar', 'kal'), 'kar mı kal mı?');
+    expect(pairQuestion('yer', 'yel'), 'yer mi yel mi?');
+    expect(pairQuestion('kol', 'koy'), 'kol mu koy mu?');
+    expect(pairQuestion('göl', 'döl'), 'göl mü döl mü?');
+  });
+
+  test('kulak eğitimi istatistiği ve oran kategorileri', () {
+    final p = Progress.instance;
+    for (final b in [true, true, false, true]) {
+      p.recordEar('own', b);
+    }
+    expect(p.earAccuracy('own'), 0.75);
+    expect(FocusResult.categoryOf(0.9), 0);
+    expect(FocusResult.categoryOf(0.5), 1);
+    expect(FocusResult.categoryOf(0.1), 2);
   });
 }

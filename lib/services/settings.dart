@@ -57,6 +57,20 @@ class Settings extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Ses analizinden önce kişinin kendi tahminini sor (öz-değerlendirme).
+  bool get selfEvalFirst => _p.getBool('selfEvalFirst') ?? false;
+  set selfEvalFirst(bool v) {
+    _p.setBool('selfEvalFirst', v);
+    notifyListeners();
+  }
+
+  /// Günlük deneme hedefi (araştırmalarda doz belirleyici; docs/ARASTIRMA.md).
+  int get dailyGoal => _p.getInt('dailyGoal') ?? 100;
+  set dailyGoal(int v) {
+    _p.setInt('dailyGoal', v);
+    notifyListeners();
+  }
+
   bool get seenIntro => _p.getBool('seenIntro') ?? false;
   set seenIntro(bool v) => _p.setBool('seenIntro', v);
 

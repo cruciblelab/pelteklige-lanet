@@ -90,6 +90,14 @@ class FocusResult {
   static const errorBelow = 0.2;
   static const correctFrom = 0.7;
 
+  /// Orana göre kategori: 0 = doğru, 1 = arada, 2 = hata. Kulak eğitiminde
+  /// kişinin tahminiyle karşılaştırmak için.
+  static int categoryOf(double ratio) => ratio >= correctFrom
+      ? 0
+      : ratio < errorBelow
+      ? 2
+      : 1;
+
   final double ratio;
   final String errorLabel;
   final Verdict verdict;

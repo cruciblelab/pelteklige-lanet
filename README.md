@@ -1,7 +1,11 @@
-# Peltekliğe Lanet
+# Peltek
 
 Pelteklik, R söyleyememe, ses değiştirme (R → Y, S → Ş, K → T…) ve kelime/hece
 yutma gibi **artikülasyon** sorunları için Türkçe bir Android alıştırma uygulaması.
+
+> **Araştırma özeti:** [docs/ARASTIRMA.md](docs/ARASTIRMA.md): R bozukluğunda
+> kendi hatanı duyamamak, görsel geri bildirim, kulak eğitimi ve doz üzerine
+> klinik çalışmalar ve uygulamaya nasıl yansıdıkları.
 
 > Bu uygulama bir alıştırma defteridir; tanı koymaz ve bir dil ve konuşma
 > terapistinin (DKT) yerine geçmez.
@@ -15,6 +19,8 @@ yutma gibi **artikülasyon** sorunları için Türkçe bir Android alıştırma 
 | Bölüm | Ne yapar |
 |---|---|
 | **Başlangıç ve plan** | İlk açılışta kısa sorular: kim çalışacak, hangi sesler zor ve **nasıl söylüyorsun** (ör. “R’yi L gibi ya da L ile R arası”); ya da kısa tarama testi hatayı kendisi bulur. Ana ekranda kişisel plan ve tek dokunuşla “Devam et”. Her ses basamaklara ayrılır; ses analizi son 8 denemenin 6'sını doğru bulunca basamak geçilir. |
+| **Kulak eğitimi** | “R mi L mi?”: telefonun sesi farklı ton ve hızlarda söyler, sen seçersin. **Kendi sesin** modunda eski kayıtlarını dinleyip tahmin edersin, sonra modelin kararını görürsün; “kulak uyumun” ölçülür. İsteğe bağlı “Önce ben tahmin edeyim” ayarı. Plan, R için bu basamakla başlar. |
+| **Günlük hedef** | Günlük deneme sayısı hedefi (varsayılan 100); araştırmalarda tekrar sayısı belirleyici. |
 | **Kendi hatana odaklı** | Hatanı seçince analiz yalnızca o ayrıma bakar ve sonucu bir **R ←●→ L ibresiyle** gösterir (“R ile L arasında” dahil). Alıştırmalara “kar mı kal mı?” çiftleri eklenir. |
 | **R’ye özel** | “D’den R’ye köprü” hazırlığı (ada → ara, R ↔ D ibresi), R kümeleri (tren, kral…), R→Y/L/D/V-W/gırtlak/yutma ayrımı ve her hata için ne yapılacağını söyleyen yönlendirme. |
 | **Animasyon** | Ağzın yan kesiti: dil, damak, küçük dil, dişler, dudaklar; R’de dil ucunun diş etine tek vuruşu ve temas dalgası, L’de yapışık dil ve yanlardan akan hava, D/T’de kapanma–basınç–patlama. “Doğrusu / Senin / Üst üste” karşılaştırması, adım adım alt yazı, yavaş çekim. |
@@ -53,7 +59,7 @@ Her push’ta GitHub Actions (`.github/workflows/android.yml`) analiz + test
 çalıştırır ve release APK üretir.
 
 - **Son derleme:** GitHub → *Actions* → *Android APK* → son çalıştırma →
-  *Artifacts* → `apk-arm64` (zip olarak iner, içinden `.apk` çıkar).
+  *Artifacts* → `apk-arm64` (zip olarak iner, içinden `peltek-….apk` çıkar).
   Çok eski 32 bit telefonlar için `apk-armv7`. Boyut ~90 MB; bunun 70 MB'ı
   ses modeli.
 - **Sürüm yayınlamak:** `git tag v0.1.0 && git push origin v0.1.0` → APK

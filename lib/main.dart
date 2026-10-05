@@ -18,7 +18,7 @@ class PeltekApp extends StatelessWidget {
   Widget build(BuildContext context) {
     const seed = Color(0xFF00897B);
     return MaterialApp(
-      title: 'Peltekliğe Lanet',
+      title: 'Peltek',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: seed),

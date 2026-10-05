@@ -6,9 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../audio/pronunciation_scorer.dart';
 import '../data/minimal_pairs.dart';
 import '../data/sounds.dart';
+import '../utils/turkish.dart';
 import '../models/sound.dart';
 
-enum LevelKind { bridge, pairs, practice }
+enum LevelKind { ear, bridge, pairs, practice }
 
 /// Bir sesin çalışma basamağı (hazırlık → hece → kelime → cümle…).
 class Level {
@@ -30,7 +31,19 @@ class Level {
 /// Ses için sıralı basamaklar. Boş olanlar atlanır.
 List<Level> levelsFor(SoundInfo s) {
   final l = s.letter;
+  final pairsLevel = _pairsLevel(s);
   return [
+    if (pairsLevel != null)
+      Level(
+        id: 'kulak',
+        title: () {
+          final p = pairsLevel.items.first.split('|');
+          return 'Kulak: ${pairQuestion(p[0], p[1])}';
+        }(),
+        hint: 'Önce farkı duymayı öğren',
+        kind: LevelKind.ear,
+        items: pairsLevel.items,
+      ),
     if (s.bridge.isNotEmpty)
       Level(
         id: 'kopru',
@@ -39,7 +52,7 @@ List<Level> levelsFor(SoundInfo s) {
         kind: LevelKind.bridge,
         items: [for (final b in s.bridge) b.$1],
       ),
-    ?_pairsLevel(s),
+    ?pairsLevel,
     Level(
       id: 'hece',
       title: 'Heceler',
@@ -103,7 +116,7 @@ Level? _pairsLevel(SoundInfo s) {
   if (pairs.isEmpty) return null;
   return Level(
     id: 'cift',
-    title: 'Çiftler: ${pairs.first.$1} mı ${pairs.first.$2} mı?',
+    title: 'Çiftler: ${pairQuestion(pairs.first.$1, pairs.first.$2)}',
     hint: '${s.letter} ile $short arasındaki farkı söyle',
     kind: LevelKind.pairs,
     items: [for (final pr in pairs) '${pr.$1}|${pr.$2}'],
@@ -172,6 +185,28 @@ class Progress extends ChangeNotifier {
     final raw = _prefs.getString('focusErrors');
     if (raw == null) return {};
     return (jsonDecode(raw) as Map<String, dynamic>).cast<String, String>();
+  }
+
+  /// Kulak eğitimi sonuçları: 'tts' (telefonun sesi) ve 'own' (kendi sesin,
+  /// modelle uyuşma). Son 50 tutulur.
+  List<bool> earResults(String kind) =>
+      (_prefs.getStringList('ear_$kind') ?? const [])
+          .map((e) => e == '1')
+          .toList();
+
+  void recordEar(String kind, bool correct) {
+    final l = [...earResults(kind), correct];
+    final keep = l.length > 50 ? l.sublist(l.length - 50) : l;
+    _prefs.setStringList('ear_$kind', [for (final b in keep) b ? '1' : '0']);
+    notifyListeners();
+  }
+
+  /// Son [n] kulak denemesinde doğru oranı (yoksa null).
+  double? earAccuracy(String kind, {int n = 20}) {
+    final r = earResults(kind);
+    if (r.isEmpty) return null;
+    final last = r.length > n ? r.sublist(r.length - n) : r;
+    return last.where((x) => x).length / last.length;
   }
 
   Map<String, List<bool>> get _results {

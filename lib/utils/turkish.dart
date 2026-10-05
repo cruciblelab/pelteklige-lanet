@@ -30,3 +30,25 @@ List<String> tokenize(String s) {
   final n = normalizeText(s);
   return n.isEmpty ? const [] : n.split(' ');
 }
+
+/// Soru eki, ünlü uyumuna göre: kar → "mı", yer → "mi", kol → "mu", göl → "mü".
+String questionParticle(String word) {
+  final w = trLower(word);
+  for (var i = w.length - 1; i >= 0; i--) {
+    switch (w[i]) {
+      case 'a' || 'ı' || 'â':
+        return 'mı';
+      case 'e' || 'i' || 'î':
+        return 'mi';
+      case 'o' || 'u' || 'û':
+        return 'mu';
+      case 'ö' || 'ü':
+        return 'mü';
+    }
+  }
+  return 'mı';
+}
+
+/// "kar mı kal mı?" biçiminde soru.
+String pairQuestion(String a, String b) =>
+    '$a ${questionParticle(a)} $b ${questionParticle(b)}?';

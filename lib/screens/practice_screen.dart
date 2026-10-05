@@ -8,6 +8,7 @@ import '../widgets/articulation/articulation_view.dart';
 import '../widgets/articulation/articulations.dart';
 import '../widgets/pronunciation_panel.dart';
 import 'bridge_screen.dart';
+import 'ear_screen.dart';
 import 'pairs_screen.dart';
 
 /// Bir basamağın alıştırması: kelime → söyle → ibre. Sade tutulur:
@@ -227,6 +228,7 @@ void showHowSheet(BuildContext context, SoundInfo sound) {
 
 /// Basamak türüne göre doğru ekranı açar.
 Widget levelPage(SoundInfo sound, Level level) => switch (level.kind) {
+  LevelKind.ear => EarScreen(sound: sound, level: level),
   LevelKind.bridge => BridgeScreen(sound: sound, level: level),
   LevelKind.pairs => PairsScreen(sound: sound, level: level),
   LevelKind.practice => PracticeScreen(sound: sound, level: level),

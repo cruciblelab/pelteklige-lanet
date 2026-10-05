@@ -8,7 +8,7 @@ import 'meter_screen.dart';
 import 'onboarding_screen.dart';
 import 'practice_screen.dart';
 import 'sound_detail_screen.dart';
-import 'minimal_pairs_screen.dart';
+import 'ear_screen.dart';
 import 'reading_list_screen.dart';
 import 'recordings_screen.dart';
 import 'settings_screen.dart';
@@ -40,7 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final s = Settings.instance;
-    final theme = Theme.of(context);
     final items = [
       _Tile(
         'Tüm sesler',
@@ -57,11 +56,13 @@ class _HomeScreenState extends State<HomeScreen> {
         () => _go(const ReadingListScreen()),
       ),
       _Tile(
-        'Benzer kelimeler',
-        'kar / kay, su / şu: duy ve söyle',
-        Icons.compare_arrows,
+        'Kulak eğitimi',
+        'R mi L mi? Farkı duymayı öğren',
+        Icons.hearing,
         const Color(0xFFEF6C00),
-        () => _go(const MinimalPairsScreen()),
+        () => _go(
+          EarScreen(sound: soundById(Progress.instance.focusSounds.first)),
+        ),
       ),
       _Tile(
         'Tıslama ölçer',
@@ -87,25 +88,13 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Peltekliğe Lanet')),
+      appBar: AppBar(title: const Text('Peltek')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _PlanCard(onOpen: _go),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.local_fire_department, color: Colors.deepOrange),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Bugün ${s.todayCount} deneme'
-                  '${s.streak > 1 ? ' · ${s.streak} gündür aralıksız' : ''}',
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ),
-            ],
-          ),
+          _DailyGoal(done: s.todayCount, goal: s.dailyGoal, streak: s.streak),
           const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 2,
@@ -212,8 +201,7 @@ class _PlanCard extends StatelessWidget {
                             ),
                             if (p.focusError(snd.id) case final e?)
                               Text(
-                                'Odak: ${snd.letter} ↔ '
-                                '${PronunciationScorer.errorShort(e)}',
+                                'Odak: ${snd.letter} ile ${PronunciationScorer.errorShort(e)} farkı',
                                 style: theme.textTheme.bodySmall,
                               ),
                             const SizedBox(height: 4),
@@ -240,6 +228,57 @@ class _PlanCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Günlük deneme hedefi. Araştırmalarda tekrar sayısı (doz) belirleyici
+/// (docs/ARASTIRMA.md, bölüm 4).
+class _DailyGoal extends StatelessWidget {
+  final int done, goal, streak;
+  const _DailyGoal({
+    required this.done,
+    required this.goal,
+    required this.streak,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final v = (done / goal).clamp(0.0, 1.0);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                done >= goal ? Icons.emoji_events : Icons.local_fire_department,
+                color: done >= goal ? Colors.amber : Colors.deepOrange,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Bugün $done / $goal deneme'
+                  '${streak > 1 ? ' · $streak gündür aralıksız' : ''}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: v),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (context, x, _) => ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(value: x, minHeight: 8),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -101,7 +101,7 @@ jobs:
         id: name
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
-          BASE="peltekligelanet-${VERSION}-${{ github.run_number }}"
+          BASE="peltek-${VERSION}-${{ github.run_number }}"
           OUT=build/app/outputs/flutter-apk
           cp "$OUT/app-arm64-v8a-release.apk" "$BASE-arm64.apk"
           cp "$OUT/app-armeabi-v7a-release.apk" "$BASE-armv7.apk"

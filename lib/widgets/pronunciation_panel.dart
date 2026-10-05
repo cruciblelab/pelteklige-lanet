@@ -4,6 +4,7 @@ import '../audio/phoneme_model.dart';
 import '../audio/pronunciation_scorer.dart';
 import '../audio/voice_capture.dart';
 import '../services/recordings.dart';
+import '../services/progress.dart';
 import '../services/settings.dart';
 import '../services/stt.dart';
 import 'focus_gauge.dart';
@@ -59,6 +60,9 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
   RecordingEntry? _recording;
   String? _message;
   bool _details = false;
+
+  /// "Önce ben tahmin edeyim" açıksa kişinin tahmini (0 doğru, 1 arada, 2 hata).
+  int? _guess;
 
   @override
   void dispose() {
@@ -162,11 +166,22 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
       );
       if (!mounted) return;
       final shown = _pick(r);
+      var annotated = rec;
+      if (shown != null) {
+        annotated = await RecordingStore.instance.annotate(
+          rec,
+          soundId: widget.soundId,
+          errorLabel: shown.errorLabel,
+          ratio: shown.ratio,
+        );
+      }
+      if (!mounted) return;
       setState(() {
         _phase = _Phase.done;
         _result = r;
         _shown = shown;
-        _recording = rec;
+        _recording = annotated;
+        _guess = null;
         if (shown == null) {
           _message =
               '“${widget.text}” gibi duyulmadı. Kelimeyi tam ve net söyle.';
@@ -224,9 +239,49 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
                         padding: const EdgeInsets.only(top: 12),
                         child: Text(_message!, textAlign: TextAlign.center),
                       ))
+              : (Settings.instance.selfEvalFirst && _guess == null)
+              ? _guessView(theme, shown)
               : _resultView(theme, shown),
         ),
       ],
+    );
+  }
+
+  /// Öz-değerlendirme: sonuç gösterilmeden önce kişinin kendi tahmini.
+  Widget _guessView(ThemeData theme, _Shown s) {
+    final err = PronunciationScorer.errorShort(s.errorLabel);
+    final labels = [widget.targetLetter, 'Arada', err];
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        children: [
+          Text('Sence nasıl söyledin?', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (var i = 0; i < 3; i++)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56),
+                      ),
+                      onPressed: () {
+                        Progress.instance.recordEar(
+                          'own',
+                          i == FocusResult.categoryOf(s.ratio),
+                        );
+                        setState(() => _guess = i);
+                      },
+                      child: Text(labels[i], style: theme.textTheme.titleLarge),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -273,6 +328,14 @@ class _PronunciationPanelState extends State<PronunciationPanel> {
               ),
             ),
           ),
+          if (_guess != null)
+            Text(
+              _guess == FocusResult.categoryOf(s.ratio)
+                  ? 'Tahminin modelle aynı.'
+                  : 'Sen “${[widget.targetLetter, 'arada', PronunciationScorer.errorShort(s.errorLabel)][_guess!]}” dedin.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium,
+            ),
           if (s.otherError != null)
             Text(
               'Bu sefer daha çok “${PronunciationScorer.errorShort(s.otherError!)}” gibi duyuldu.',

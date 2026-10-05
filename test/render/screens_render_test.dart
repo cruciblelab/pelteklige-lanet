@@ -12,7 +12,7 @@ import 'package:pelteklige_lanet/data/sounds.dart';
 import 'package:pelteklige_lanet/data/stories.dart';
 import 'package:pelteklige_lanet/screens/home_screen.dart';
 import 'package:pelteklige_lanet/screens/meter_screen.dart';
-import 'package:pelteklige_lanet/screens/minimal_pairs_screen.dart';
+import 'package:pelteklige_lanet/screens/ear_screen.dart';
 import 'package:pelteklige_lanet/screens/practice_screen.dart';
 import 'package:pelteklige_lanet/screens/reading_screen.dart';
 import 'package:pelteklige_lanet/screens/sound_detail_screen.dart';
@@ -106,7 +106,10 @@ void main() {
       ),
     ),
     'detail_R': () => SoundDetailScreen(sound: soundById('R')),
-    'pairs': () => const MinimalPairsScreen(),
+    'ear_R': () => EarScreen(
+      sound: soundById('R'),
+      level: levelsFor(soundById('R')).first,
+    ),
     'meter': () => const MeterScreen(),
     'reading': () => ReadingScreen(story: stories.first),
   };
@@ -135,6 +138,8 @@ void main() {
         find.byType(MaterialApp),
         matchesGoldenFile('goldens/screen_${e.key}.png'),
       );
+      await tester.pump(const Duration(milliseconds: 200));
+      while (tester.takeException() != null) {}
     });
   }
 }

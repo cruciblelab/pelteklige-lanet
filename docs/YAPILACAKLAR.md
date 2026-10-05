@@ -1,6 +1,6 @@
 # Yapılacaklar / açık sorunlar
 
-Son güncelleme: 2026-10-04
+Son güncelleme: 2026-10-05
 
 ## 1. Konuşunca uygulama çöküyor — SEBEP BULUNDU, DÜZELTİLDİ (telefonda doğrulanacak)
 
@@ -48,6 +48,9 @@ Model şimdiye kadar yalnızca yetişkin sesi ve TTS ile ölçüldü. Çökme
 - [ ] Başlangıçta “R’yi nasıl söylüyorsun?” sorusunda kendi hatanı seç (ör. L gibi);
       alıştırmalardaki R ↔ L ibresi söyleyişine uyuyor mu?
 - [ ] “Çiftler: kar mı kal mı?” basamağını dene
+- [ ] **Kulak eğitimi → Kendi sesin**: birkaç gün sonra “kulak uyumun” artıyor mu?
+      (Başlangıçta düşük çıkması beklenen bir şey; bkz. docs/ARASTIRMA.md)
+- [ ] Ayarlar → “Önce ben tahmin edeyim”i açıp bir süre dene
 - [ ] Ses detayındaki animasyonda “Üst üste” modunda fark anlaşılıyor mu?
 - [ ] “radyo”, “araba”, “kırmızı” kelimelerini alıştırmada söyle
 - [ ] Her biri için yaz: sonuç (doğru / hata / net değil ve yüzdesi) ve altındaki

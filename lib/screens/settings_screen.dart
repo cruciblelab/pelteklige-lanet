@@ -32,6 +32,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(),
           SwitchListTile(
+            title: const Text('Önce ben tahmin edeyim'),
+            subtitle: const Text(
+              'Ses analizi sonucu göstermeden önce “sence nasıl söyledin?” diye '
+              'sorar. Kendi hatanı duymayı öğrenmek için (docs/ARASTIRMA.md).',
+            ),
+            value: s.selfEvalFirst,
+            onChanged: (v) => setState(() => s.selfEvalFirst = v),
+          ),
+          ListTile(
+            title: Text('Günlük hedef: ${s.dailyGoal} deneme'),
+            subtitle: Slider(
+              value: s.dailyGoal.toDouble(),
+              min: 30,
+              max: 300,
+              divisions: 9,
+              label: '${s.dailyGoal}',
+              onChanged: (v) => setState(() => s.dailyGoal = v.round()),
+            ),
+          ),
+          const Divider(),
+          SwitchListTile(
             title: const Text('Konuşma tanımayı mümkünse telefonda yap'),
             subtitle: const Text(
               'Açıkken telefonun kendi (çevrimdışı) tanıyıcısı tercih edilir. Bunun için Türkçe '
@@ -81,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text('Hakkında', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
                 const Text(
-                  'Peltekliğe Lanet, artikülasyon (ses üretimi) alıştırmaları için hazırlanmış '
+                  'Peltek, artikülasyon (ses üretimi) alıştırmaları için hazırlanmış '
                   'açık kaynak bir uygulamadır. Tanı koymaz ve tedavi yerine geçmez.\n\n'
                   'Ne zaman bir uzmana gitmeli? 4–5 yaşından sonra hâlâ belirgin ses hataları '
                   'varsa, yanal S (hava yanlardan kaçıyorsa) varsa, kekemelik, sesin kısılması '
